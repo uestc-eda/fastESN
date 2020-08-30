@@ -5,6 +5,7 @@ import tensorflow.keras as keras
 from tensorflow.python.ops import math_ops
 from ESN import EchoStateRNNCell
 import matplotlib.pyplot as plt
+import tensorflow_addons as tfa
 
 # memory growth
 physical_devices = tf.config.list_physical_devices('GPU')
@@ -21,7 +22,7 @@ print("seed: ", random_seed)
 batches = 20
 stime = 50
 epochs = 400
-num_units = 20
+num_units = 50
 num_inputs = 1
 num_outputs = 1
    
@@ -50,6 +51,9 @@ cell = EchoStateRNNCell(units=num_units,
 # Build the recurrent layer containing the ESN cell
 recurrent_layer = keras.layers.RNN(cell, input_shape=(stime, num_inputs), 
                                    return_sequences=True, name="nn")
+
+# recurrent_layer = tfa.layers.ESN(units=num_units, connectivity=1, input_shape=(stime, num_inputs), return_sequences=True, name="nn")
+
 # Build the readout layer
 output = keras.layers.Dense(num_outputs, name="readouts")
 # initialize the adam optimizer for training
@@ -102,4 +106,4 @@ plt.legend([i, t, o], ['input', "target", "readout"])
 
 plt.show()
 
-print(model.layers[0].get_weights()[0])
+print(model.layers[0].weights)
