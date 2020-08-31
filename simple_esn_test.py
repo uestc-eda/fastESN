@@ -6,6 +6,7 @@ from tensorflow.python.ops import math_ops
 from ESN import EchoStateRNNCell
 import matplotlib.pyplot as plt
 import tensorflow_addons as tfa
+import mor_esn
 
 # memory growth
 physical_devices = tf.config.list_physical_devices('GPU')
@@ -21,8 +22,8 @@ print("seed: ", random_seed)
 
 # batches = 100
 stime = 50
-epochs = 1000
-num_units = 50
+epochs = 10000
+num_units = 100
 num_inputs = 1
 num_outputs = 1
    
@@ -53,7 +54,7 @@ plt.legend([i, t], ['input', "target"])
 # recurrent_layer = keras.layers.RNN(cell, input_shape=(stime, num_inputs), 
 #                                    return_sequences=True, name="nn")
 
-recurrent_layer = tfa.layers.ESN(units=num_units, leaky=1, activation='tanh', connectivity=0.5, input_shape=(stime, num_inputs), return_sequences=True, use_bias=False, name="nn")
+recurrent_layer = tfa.layers.ESN(units=num_units, leaky=1, activation='tanh', connectivity=0.7, input_shape=(stime, num_inputs), return_sequences=True, use_bias=False, name="nn")
 
 # Build the readout layer
 output = keras.layers.Dense(num_outputs, name="readouts")
@@ -114,24 +115,44 @@ print("out_bias=", out_bias)
 
 # simulate the state space ESN model
 x_pre = np.zeros((num_units,1)) # initiate state as zeros if esn model use default zero initial state
+x_all = np.zeros((num_units, inputs.shape[1])) # store all the states, will be used as samples for MOR
 y_out = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
 print("shape_inputs: ", inputs.shape)
 for i in range(inputs[0].shape[0]):    
     x_cur = np.tanh(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[1,1]))
     y_out[:,i] = W_out @ x_cur + out_bias
+    x_all[:,[i]] = x_cur # record current state in all state vector as samples for MOR later
     x_pre = x_cur
 print("y_out=", y_out)
 
+# perform MOR on ESN model
+n_sample = 20
+order = 25
+W_r, W_in_r, W_out_r, U = mor_esn.mor_esn(W, W_in, W_out, out_bias, x_all, n_sample, order)
+# print("W_r=", W_r)
+# print("W_in_r=", W_in_r)
+# print("W_out_r=", W_out_r)
+print("U=", U)
+
+# simulate the reduced ESN model
+x_pre_r = np.zeros((order,1)) # initiate state as zeros if esn model use default zero initial state
+y_out_r = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
+print("shape_inputs: ", inputs.shape)
+for i in range(inputs[0].shape[0]):    
+    x_cur_r = U.T@np.tanh(W@U@x_pre_r + W_in@tf.reshape(inputs[0,i,:],[1,1]))
+    y_out_r[:,i] = W_out_r @ x_cur_r + out_bias
+    x_pre_r = x_cur_r
+print("y_out_r=", y_out_r)
+
+# plot the results
 plt.figure()
 outputs = model(inputs) 
 i, = plt.plot(inputs[0], color="blue")
 t, = plt.plot(targets[0], color="#44ff44", lw=10)
 o, = plt.plot(outputs[0], color="#ff4444", lw=4)
 m, = plt.plot(y_out[0], color="black", linestyle='dashed')
+r, = plt.plot(y_out_r[0], color="magenta", linestyle='dotted')
 plt.xlabel("Timesteps")
-plt.legend([i, t, o, m], ['input', "target", "readout", "ss model"])
+plt.legend([i, t, o, m, r], ['input', "target", "readout", "ss model", "reduced"])
 
 plt.show()
-
-
-
