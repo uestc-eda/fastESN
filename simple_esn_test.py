@@ -55,7 +55,7 @@ plt.legend([i, t], ['input', "target"])
 # recurrent_layer = keras.layers.RNN(cell, input_shape=(stime, num_inputs), 
 #                                    return_sequences=True, name="nn")
 
-recurrent_layer = tfa.layers.ESN(units=num_units, leaky=1, activation='tanh', connectivity=0.7, input_shape=(stime, num_inputs), return_sequences=True, use_bias=False, name="nn")
+recurrent_layer = tfa.layers.ESN(units=num_units, leaky=1, activation='tanh', connectivity=0.1, input_shape=(stime, num_inputs), return_sequences=True, use_bias=False, name="nn")
 
 # Build the readout layer
 output = keras.layers.Dense(num_outputs, name="readouts")
@@ -128,7 +128,7 @@ for i in range(inputs[0].shape[0]):
 
 # perform MOR on ESN model
 sample_step = 3
-order = 10
+order = 20
 W_r, W_in_r, W_out_r, V = mor_esn.mor_esn(W, W_in, W_out, out_bias, x_all, sample_step, order)
 # print("W_r=", W_r)
 # print("W_in_r=", W_in_r)
@@ -161,12 +161,12 @@ for i in range(inputs[0].shape[0]):
 print("** ploting the final results...")
 plt.figure()
 outputs = model(inputs) 
-i, = plt.plot(inputs[0], color="blue")
+i, = plt.plot(inputs[0], color="cyan")
 t, = plt.plot(targets[0], color="#44ff44", lw=10)
 o, = plt.plot(outputs[0], color="#ff4444", lw=4)
 m, = plt.plot(y_out[0], color="black", linestyle='dashed')
 r, = plt.plot(y_out_r[0], color="magenta", linestyle='dotted')
-d, = plt.plot(y_out_deim[0], color="cyan", linestyle='dashdot')
+d, = plt.plot(y_out_deim[0], color="blue", linestyle='dashdot')
 plt.xlabel("Timesteps")
 plt.legend([i, t, o, m, r, d], ['input', "target", "readout", "ss model", "reduced", "deim red"])
 
