@@ -1,4 +1,5 @@
 import numpy as np
+import tensorflow as tf
 
 def mor_esn(W, W_in, W_out, out_bias, x_all, sample_step, order):
     # sample_step = x_all.shape[1]//n_sample # integer floor division "//" to compute integer sample_step
@@ -54,3 +55,27 @@ def deim_core(U):
     # print("P=", P)
     print("idx=", idx)
     return idx, P
+
+def esn_matrix_extract(model):
+    # this function extracts the matrices of an ESN network
+    W = tf.transpose(model.layers[0].weights[0])
+    W_in = tf.transpose(model.layers[0].weights[1])
+
+    W_out = tf.transpose(model.layers[1].weights[0])
+    out_bias = tf.transpose(model.layers[1].weights[1])
+
+    return W, W_in, W_out, out_bias
+
+def esn_ss_sim(W, W_in, W_out, out_bias):
+    # simulate the ESN state space model
+    num_units = W.shape[0]
+    x_pre = np.zeros((num_units,1)) # initiate state as zeros if esn model use default zero initial state
+    x_all = np.zeros((num_units, inputs.shape[1])) # store all the states, will be used as samples for MOR
+    y_out = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
+    # print("shape_inputs: ", inputs.shape)
+    for i in range(inputs[0].shape[0]):    
+        x_cur = np.tanh(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[1,1]))
+        y_out[:,i] = W_out @ x_cur + out_bias
+        x_all[:,[i]] = x_cur # record current state in all state vector as samples for MOR later
+        x_pre = x_cur
+    return y_out, x_all

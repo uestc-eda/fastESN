@@ -104,15 +104,7 @@ plt.legend([r[0],o], ["network activity", "readout"])
 # print(model.layers[1].weights)
 
 # extract the ESN model in state space form
-W = tf.transpose(model.layers[0].weights[0])
-W_in = tf.transpose(model.layers[0].weights[1])
-# print("W_in=", W_in)
-# print("W=", W)
-
-W_out = tf.transpose(model.layers[1].weights[0])
-out_bias = tf.transpose(model.layers[1].weights[1])
-# print("W_out=", W_out)
-# print("out_bias=", out_bias)
+W, W_in, W_out, out_bias = mor_esn.esn_matrix_extract(model)
 
 # simulate the state space ESN model
 x_pre = np.zeros((num_units,1)) # initiate state as zeros if esn model use default zero initial state
