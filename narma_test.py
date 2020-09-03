@@ -94,7 +94,7 @@ m, = plt.plot(y_out[0], color="green", linestyle='dashed')
 r, = plt.plot(y_out_r[0], color="magenta", linestyle='dotted')
 d, = plt.plot(y_out_deim[0], color="blue", linestyle='dashdot')
 plt.xlabel("Timesteps")
-plt.legend([t, o, m, r, d], ['input', "target", "readout", "ss model", "reduced", "deim red"])
+plt.legend([t, o, m, r, d], ["target", "readout", "ss model", "reduced", "deim red"])
 
 plt.show()
 
