@@ -3,11 +3,12 @@ import data_generate
 import matplotlib.pyplot as plt
 import tensorflow_addons as tfa
 import tensorflow.keras as keras
+import mor_esn
 
 stime_train = 1000 # sample number for training
 stime_val = 200 # sample number for validation
 epochs = 1000
-num_units = 200
+num_units = 100
 num_inputs = 1
 num_outputs = 1
 
@@ -65,12 +66,35 @@ plt.legend([i, t, o], ['input', "target", "readout"])
 
 y_10_esn_val = model(u_10_val)
 
+# extract the ESN model in state space form
+W, W_in, W_out, out_bias = mor_esn.esn_matrix_extract(model)
+
+# simulate the state space ESN model
+y_out, x_all = mor_esn.esn_ss_sim(W, W_in, W_out, out_bias, u_10_val)
+
+# perform MOR on ESN model
+sample_step = 3
+order = 20
+W_r, W_in_r, W_out_r, V = mor_esn.mor_esn(W, W_in, W_out, out_bias, x_all, sample_step, order)
+
+# simulate the reduced ESN model without DEIM
+y_out_r = mor_esn.esn_red_sim(W, W_in, W_out_r, out_bias, V, u_10_val)
+
+# perform MOR with deim
+W_deim, W_in_deim, E_deim, W_out_deim = mor_esn.deim_whole(W, W_in, W_out, V, x_all, order)
+
+# simulate the reduced ESN model with DEIM
+y_out_deim = mor_esn.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, u_10_val)
+
 plt.figure()
-i, = plt.plot(u_10_val[0], color="blue")
+# i, = plt.plot(u_10_val[0], color="blue")
 t, = plt.plot(y_10_val[0], color="black")
-o, = plt.plot(y_10_esn_val[0], color="red", linestyle='dashed')
+o, = plt.plot(y_10_esn_val[0], color="red", linestyle='solid')
+m, = plt.plot(y_out[0], color="green", linestyle='dashed')
+r, = plt.plot(y_out_r[0], color="magenta", linestyle='dotted')
+d, = plt.plot(y_out_deim[0], color="blue", linestyle='dashdot')
 plt.xlabel("Timesteps")
-plt.legend([i, t, o], ['input', "target", "readout"])
+plt.legend([t, o, m, r, d], ['input', "target", "readout", "ss model", "reduced", "deim red"])
 
 plt.show()
 

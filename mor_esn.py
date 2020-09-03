@@ -66,9 +66,10 @@ def esn_matrix_extract(model):
 
     return W, W_in, W_out, out_bias
 
-def esn_ss_sim(W, W_in, W_out, out_bias):
+def esn_ss_sim(W, W_in, W_out, out_bias, inputs):
     # simulate the ESN state space model
     num_units = W.shape[0]
+    num_outputs = W_out.shape[0]
     x_pre = np.zeros((num_units,1)) # initiate state as zeros if esn model use default zero initial state
     x_all = np.zeros((num_units, inputs.shape[1])) # store all the states, will be used as samples for MOR
     y_out = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
@@ -79,3 +80,30 @@ def esn_ss_sim(W, W_in, W_out, out_bias):
         x_all[:,[i]] = x_cur # record current state in all state vector as samples for MOR later
         x_pre = x_cur
     return y_out, x_all
+
+def esn_red_sim(W, W_in, W_out_r, out_bias, V, inputs):
+    # simulate the reduced ESN state space model without DEIM
+    print("** simulating the reduced model...")
+    order = V.shape[1]
+    num_outputs = W_out_r.shape[0]
+    x_pre_r = np.zeros((order,1)) # initiate state as zeros if esn model use default zero initial state
+    y_out_r = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
+    # print("shape_inputs: ", inputs.shape)
+    for i in range(inputs[0].shape[0]):    
+        x_cur_r = V.T@np.tanh(W@V@x_pre_r + W_in@tf.reshape(inputs[0,i,:],[1,1]))
+        y_out_r[:,i] = W_out_r @ x_cur_r + out_bias
+        x_pre_r = x_cur_r
+    return y_out_r
+
+def esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, inputs):
+    # simulate the reduced ESN model with DEIM
+    print("** simulating the DEIM reduced model...")
+    order = W_deim.shape[0]
+    num_outputs = W_out_deim.shape[0]
+    x_pre_deim = np.zeros((order,1)) # initiate state as zeros if esn model use default zero initial state
+    y_out_deim = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
+    for i in range(inputs[0].shape[0]):    
+        x_cur_deim = E_deim@np.tanh(W_deim@x_pre_deim + W_in_deim@tf.reshape(inputs[0,i,:],[1,1]))
+        y_out_deim[:,i] = W_out_deim @ x_cur_deim + out_bias
+        x_pre_deim = x_cur_deim
+    return y_out_deim

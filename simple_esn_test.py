@@ -107,16 +107,7 @@ plt.legend([r[0],o], ["network activity", "readout"])
 W, W_in, W_out, out_bias = mor_esn.esn_matrix_extract(model)
 
 # simulate the state space ESN model
-x_pre = np.zeros((num_units,1)) # initiate state as zeros if esn model use default zero initial state
-x_all = np.zeros((num_units, inputs.shape[1])) # store all the states, will be used as samples for MOR
-y_out = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
-# print("shape_inputs: ", inputs.shape)
-for i in range(inputs[0].shape[0]):    
-    x_cur = np.tanh(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[1,1]))
-    y_out[:,i] = W_out @ x_cur + out_bias
-    x_all[:,[i]] = x_cur # record current state in all state vector as samples for MOR later
-    x_pre = x_cur
-# print("y_out=", y_out)
+y_out, x_all = mor_esn.esn_ss_sim(W, W_in, W_out, out_bias, inputs)
 
 # perform MOR on ESN model
 sample_step = 3
@@ -128,26 +119,13 @@ W_r, W_in_r, W_out_r, V = mor_esn.mor_esn(W, W_in, W_out, out_bias, x_all, sampl
 # print("V=", V)
 
 # simulate the reduced ESN model without DEIM
-print("** simulating the reduced model...")
-x_pre_r = np.zeros((order,1)) # initiate state as zeros if esn model use default zero initial state
-y_out_r = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
-# print("shape_inputs: ", inputs.shape)
-for i in range(inputs[0].shape[0]):    
-    x_cur_r = V.T@np.tanh(W@V@x_pre_r + W_in@tf.reshape(inputs[0,i,:],[1,1]))
-    y_out_r[:,i] = W_out_r @ x_cur_r + out_bias
-    x_pre_r = x_cur_r
-# print("y_out_r=", y_out_r)
+y_out_r = mor_esn.esn_red_sim(W, W_in, W_out_r, out_bias, V, inputs)
 
+# perform MOR with deim
 W_deim, W_in_deim, E_deim, W_out_deim = mor_esn.deim_whole(W, W_in, W_out, V, x_all, order)
 
 # simulate the reduced ESN model with DEIM
-print("** simulating the DEIM reduced model...")
-x_pre_deim = np.zeros((order,1)) # initiate state as zeros if esn model use default zero initial state
-y_out_deim = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
-for i in range(inputs[0].shape[0]):    
-    x_cur_deim = E_deim@np.tanh(W_deim@x_pre_deim + W_in_deim@tf.reshape(inputs[0,i,:],[1,1]))
-    y_out_deim[:,i] = W_out_deim @ x_cur_deim + out_bias
-    x_pre_deim = x_cur_deim
+y_out_deim = mor_esn.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, inputs)
 
 # plot the results
 print("** ploting the final results...")
