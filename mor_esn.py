@@ -25,6 +25,7 @@ def deim_whole(W, W_in, W_out, V, samples_f, order_deim):
     W_deim = P.T@W@V
     W_in_deim = P.T@W_in
     E_deim = V.T@U@np.linalg.inv(P.T@U)
+    E_deim = E_deim.astype('float32') # convert to float to be compatible with tensorflow
     W_out_deim = W_out@V
 
     return W_deim, W_in_deim, E_deim, W_out_deim
