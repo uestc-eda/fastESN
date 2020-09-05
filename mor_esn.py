@@ -1,5 +1,7 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow.keras as keras
+from esn_red import ESNRed
 
 def mor_esn(W, W_in, W_out, out_bias, x_all, sample_step, order):
     # sample_step = x_all.shape[1]//n_sample # integer floor division "//" to compute integer sample_step
@@ -108,3 +110,23 @@ def esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, inputs):
         y_out_deim[:,i] = W_out_deim @ x_cur_deim + out_bias
         x_pre_deim = x_cur_deim
     return y_out_deim
+
+def esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, stime):
+    # create reduced ESN network and assign weights
+    print("** creating reduced ESN network and assigning weights...")
+    order = W_deim.shape[0]
+    num_inputs = W_in_deim.shape[1]
+    num_outputs = W_out_deim.shape[0]
+    recurrent_layer_red =  ESNRed(units=order, leaky=1, activation='tanh', connectivity=1, input_shape=(stime, num_inputs), return_sequences=True, use_bias=False, name="nn")
+    output_red = keras.layers.Dense(num_outputs, name="readouts")
+    # put all together in a keras sequential model
+    model_red = keras.models.Sequential()
+    model_red.add(recurrent_layer_red)
+    model_red.add(output_red)
+    model_red.summary()
+    model_red.layers[0].weights[0].assign(tf.transpose(W_deim))
+    model_red.layers[0].weights[1].assign(tf.transpose(W_in_deim))
+    model_red.layers[0].weights[2].assign(tf.transpose(E_deim))
+    model_red.layers[1].weights[0].assign(tf.transpose(W_out_deim))
+    model_red.layers[1].weights[1].assign(tf.transpose(out_bias))
+    return model_red

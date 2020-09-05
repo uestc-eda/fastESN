@@ -79,7 +79,7 @@ y_out, x_all = mor_esn.esn_ss_sim(W, W_in, W_out, out_bias, u_val)
 
 # perform MOR on ESN model
 sample_step = 3
-order = 20
+order = 10
 W_r, W_in_r, W_out_r, V = mor_esn.mor_esn(W, W_in, W_out, out_bias, x_all, sample_step, order)
 
 # simulate the reduced ESN model without DEIM
@@ -91,22 +91,10 @@ W_deim, W_in_deim, E_deim, W_out_deim = mor_esn.deim_whole(W, W_in, W_out, V, x_
 # simulate the reduced ESN model with DEIM
 y_out_deim = mor_esn.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, u_val)
 
-# form a reduced ESN network
-recurrent_layer_red = tfa.layers.ESN(units=order, leaky=1, activation='tanh', connectivity=1, input_shape=(stime_train, num_inputs), return_sequences=True, use_bias=False, name="nn")
-deim_layer = keras.layers.Dense(order, name="deim")
-output_red = keras.layers.Dense(num_outputs, name="readouts")
-# put all together in a keras sequential model
-model_red = keras.models.Sequential()
-model_red.add(recurrent_layer_red)
-model_red.add(deim_layer)
-model_red.add(output_red)
-model_red.layers[0].weights[0].assign(tf.transpose(W_deim))
-model_red.layers[0].weights[1].assign(tf.transpose(W_in_deim))
-model_red.layers[1].weights[0].assign(tf.transpose(E_deim))
-model_red.layers[2].weights[0].assign(tf.transpose(W_out_deim))
-model_red.layers[2].weights[1].assign(tf.transpose(out_bias))
-model_red.summary()
+# generate the reduced ESN network and assign weights
+model_red = mor_esn.esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, stime_val)
 
+# simulate the reduced ESN network
 y_out_esn_red = model_red(u_val) 
 
 
