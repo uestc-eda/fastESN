@@ -6,33 +6,48 @@ import tensorflow.keras as keras
 import mor_esn
 import tensorflow as tf
 
-narma_order = 10 # can only be 10 or 30
-stime_train = 1000 # sample number for training
+data_select = 1 # can only be 1, 2, 3
+stime_train = 2000 # sample number for training
 stime_val = 200 # sample number for validation
-epochs = 100
-num_units = 50
-num_inputs = 1
-num_outputs = 1
+epochs = 200
+num_units = 100 # original ESN network hidden unit number
+out_plt_index = 0 # the output to be plotted
+in_plt_index = 0 # the input to be plotted
+sample_step = 3 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
+order = 20 # reduced order
 
 # generate data for training and validation
-if narma_order == 10:
+if data_select == 1:
     y_train, u_train = data_generate.narma_10_gen(stime_train)
     y_val, u_val = data_generate.narma_10_gen(stime_val)
-elif narma_order == 30:
+elif data_select == 2:
     y_train, u_train = data_generate.narma_30_gen(stime_train)
     y_val, u_val = data_generate.narma_30_gen(stime_val)
+elif data_select == 3:
+    y_train, u_train = data_generate.two_in_two_out(stime_train)
+    y_val, u_val = data_generate.two_in_two_out(stime_val)
 else:
     raise Exception("narma_order can only be 10 or 30 in this code")
-u_train = u_train.reshape(1,-1,1)
-y_train = y_train.reshape(1,-1,1)
-u_val = u_val.reshape(1,-1,1)
-y_val = y_val.reshape(1,-1,1)
 
-# plt.figure()
-# i, = plt.plot(u_train[0], color="blue")
-# t, = plt.plot(y_train[0], color="black")
-# plt.xlabel("Timesteps")
-# plt.legend([i, t], ['input', "target"])
+num_inputs = u_train.shape[0]
+num_outputs = y_train.shape[0]
+
+u_train = u_train.T
+y_train = y_train.T
+u_val = u_val.T
+y_val = y_val.T
+# print("u_train: ", u_train)
+# print("y_train: ", y_train)
+
+u_train = u_train.reshape(1,-1,num_inputs)
+y_train = y_train.reshape(1,-1,num_outputs)
+u_val = u_val.reshape(1,-1,num_inputs)
+y_val = y_val.reshape(1,-1,num_outputs)
+plt.figure()
+i, = plt.plot(u_train[0,:,out_plt_index], color="blue")
+t, = plt.plot(y_train[0,:,out_plt_index], color="black", linestyle='dashed')
+plt.xlabel("Timesteps")
+plt.legend([i, t], ['input', "target"])
 
 recurrent_layer = tfa.layers.ESN(units=num_units, leaky=1, activation='tanh', connectivity=0.7, input_shape=(stime_train, num_inputs), return_sequences=True, use_bias=False, name="nn")
 
@@ -61,13 +76,13 @@ plt.legend([loss, logloss], ["loss","log10(loss)"])
 
 y_esn_train = model(u_train) 
 
-print("** ploting the final results...")
-plt.figure()
-i, = plt.plot(u_train[0], color="blue")
-t, = plt.plot(y_train[0], color="black")
-o, = plt.plot(y_esn_train[0], color="red", linestyle='dashed')
-plt.xlabel("Timesteps")
-plt.legend([i, t, o], ['input', "target", "readout"])
+# print("** ploting the final results...")
+# plt.figure()
+# i, = plt.plot(u_train[0,:,in_plt_index], color="blue")
+# t, = plt.plot(y_train[0,:,out_plt_index], color="black")
+# o, = plt.plot(y_esn_train[0,:,out_plt_index], color="red", linestyle='dashed')
+# plt.xlabel("Timesteps")
+# plt.legend([i, t, o], ['input', "target", "readout"])
 
 y_esn_val = model(u_val)
 
@@ -78,8 +93,6 @@ W, W_in, W_out, out_bias = mor_esn.esn_matrix_extract(model)
 y_out, x_all = mor_esn.esn_ss_sim(W, W_in, W_out, out_bias, u_val)
 
 # perform MOR on ESN model
-sample_step = 3
-order = 10
 W_r, W_in_r, W_out_r, V = mor_esn.mor_esn(W, W_in, W_out, out_bias, x_all, sample_step, order)
 
 # simulate the reduced ESN model without DEIM
@@ -100,14 +113,14 @@ y_out_esn_red = model_red(u_val)
 
 plt.figure()
 # i, = plt.plot(u_val[0], color="blue")
-t, = plt.plot(y_val[0], color="black")
-o, = plt.plot(y_esn_val[0], color="red", linestyle='solid')
-m, = plt.plot(y_out[0], color="green", linestyle='dashed')
-r, = plt.plot(y_out_r[0], color="magenta", linestyle='dotted')
-d, = plt.plot(y_out_deim[0], color="blue", linestyle='dashdot')
-nr = plt.plot(y_out_esn_red[0], color="yellow", linestyle='dotted')
+t, = plt.plot(y_val[0,:,out_plt_index], color="black")
+o, = plt.plot(y_esn_val[0,:,out_plt_index], color="red", linestyle='solid')
+# m, = plt.plot(y_out[out_plt_index,:], color="green", linestyle='dashed')
+r, = plt.plot(y_out_r[out_plt_index,:], color="magenta", linestyle='dotted')
+d, = plt.plot(y_out_deim[out_plt_index,:], color="blue", linestyle='dashdot')
+n, = plt.plot(y_out_esn_red[0,:,out_plt_index], color="green", linestyle='dashed')
 plt.xlabel("Timesteps")
-plt.legend([t, o, m, r, d], ["target", "readout", "ss model", "reduced", "deim red", "esn red"])
+plt.legend([t, o, r, d, n], ["target", "readout", "reduced", "deim red", "esn red"])
 
 plt.show()
 

@@ -66,7 +66,8 @@ def esn_matrix_extract(model):
 
     W_out = tf.transpose(model.layers[1].weights[0])
     out_bias = tf.transpose(model.layers[1].weights[1])
-
+    out_bias = tf.reshape(out_bias, [W_out.shape[0], 1])
+    
     return W, W_in, W_out, out_bias
 
 def esn_ss_sim(W, W_in, W_out, out_bias, inputs):
@@ -76,10 +77,9 @@ def esn_ss_sim(W, W_in, W_out, out_bias, inputs):
     x_pre = np.zeros((num_units,1)) # initiate state as zeros if esn model use default zero initial state
     x_all = np.zeros((num_units, inputs.shape[1])) # store all the states, will be used as samples for MOR
     y_out = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
-    # print("shape_inputs: ", inputs.shape)
     for i in range(inputs[0].shape[0]):    
-        x_cur = np.tanh(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[1,1]))
-        y_out[:,i] = W_out @ x_cur + out_bias
+        x_cur = np.tanh(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[num_outputs,1]))
+        y_out[:,[i]] = W_out @ x_cur + out_bias
         x_all[:,[i]] = x_cur # record current state in all state vector as samples for MOR later
         x_pre = x_cur
     return y_out, x_all
@@ -93,8 +93,8 @@ def esn_red_sim(W, W_in, W_out_r, out_bias, V, inputs):
     y_out_r = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
     # print("shape_inputs: ", inputs.shape)
     for i in range(inputs[0].shape[0]):    
-        x_cur_r = V.T@np.tanh(W@V@x_pre_r + W_in@tf.reshape(inputs[0,i,:],[1,1]))
-        y_out_r[:,i] = W_out_r @ x_cur_r + out_bias
+        x_cur_r = V.T@np.tanh(W@V@x_pre_r + W_in@tf.reshape(inputs[0,i,:],[num_outputs,1]))
+        y_out_r[:,[i]] = W_out_r @ x_cur_r + out_bias
         x_pre_r = x_cur_r
     return y_out_r
 
@@ -106,8 +106,8 @@ def esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, inputs):
     x_pre_deim = np.zeros((order,1)) # initiate state as zeros if esn model use default zero initial state
     y_out_deim = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
     for i in range(inputs[0].shape[0]):    
-        x_cur_deim = E_deim@np.tanh(W_deim@x_pre_deim + W_in_deim@tf.reshape(inputs[0,i,:],[1,1]))
-        y_out_deim[:,i] = W_out_deim @ x_cur_deim + out_bias
+        x_cur_deim = E_deim@np.tanh(W_deim@x_pre_deim + W_in_deim@tf.reshape(inputs[0,i,:],[num_outputs,1]))
+        y_out_deim[:,[i]] = W_out_deim @ x_cur_deim + out_bias
         x_pre_deim = x_cur_deim
     return y_out_deim
 
@@ -128,5 +128,6 @@ def esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, stime):
     model_red.layers[0].weights[1].assign(tf.transpose(W_in_deim))
     model_red.layers[0].weights[2].assign(tf.transpose(E_deim))
     model_red.layers[1].weights[0].assign(tf.transpose(W_out_deim))
+    out_bias = tf.reshape(out_bias, [num_outputs])
     model_red.layers[1].weights[1].assign(tf.transpose(out_bias))
     return model_red
