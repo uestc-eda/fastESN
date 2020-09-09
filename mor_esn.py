@@ -3,11 +3,11 @@ import tensorflow as tf
 import tensorflow.keras as keras
 from esn_red import ESNRed
 
-def mor_esn(W, W_in, W_out, out_bias, x_all, sample_step, order):
+def mor_esn(W, W_in, W_out, out_bias, sample_all, sample_step, order):
     # sample_step = x_all.shape[1]//n_sample # integer floor division "//" to compute integer sample_step
     # print("x_all=", x_all)
     print("sample_step=", sample_step)
-    samples = x_all[:, 0::sample_step]
+    samples = sample_all[:, 0::sample_step]
     # print("samples=", samples)
     U, S, V = np.linalg.svd(samples, full_matrices=False)
     U = U[:,0:order]
@@ -18,8 +18,9 @@ def mor_esn(W, W_in, W_out, out_bias, x_all, sample_step, order):
 
     return W_r, W_in_r, W_out_r, U
 
-def deim_whole(W, W_in, W_out, V, samples_f, order_deim):
-    U, S, V_deim = np.linalg.svd(samples_f, full_matrices=False)
+def deim_whole(W, W_in, W_out, V, sample_all, sample_step, order_deim):
+    samples = sample_all[:, 0::sample_step]
+    U, S, V_deim = np.linalg.svd(samples, full_matrices=False)
     U = U[:,0:order_deim]
 
     idx, P = deim_core(U)
@@ -70,21 +71,22 @@ def esn_matrix_extract(model):
     
     return W, W_in, W_out, out_bias
 
-def esn_ss_sim(W, W_in, W_out, out_bias, inputs):
+def esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, inputs):
     # simulate the ESN state space model
     num_units = W.shape[0]
     num_outputs = W_out.shape[0]
     x_pre = np.zeros((num_units,1)) # initiate state as zeros if esn model use default zero initial state
-    x_all = np.zeros((num_units, inputs.shape[1])) # store all the states, will be used as samples for MOR
+    sample_all = np.zeros((num_units, inputs.shape[1])) # store all the states, will be used as samples for MOR
     y_out = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
     for i in range(inputs[0].shape[0]):    
-        x_cur = np.tanh(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[num_outputs,1]))
+        sample = leaky_ratio*np.tanh(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[num_outputs,1]))
+        x_cur = (1-leaky_ratio)*x_pre + sample
         y_out[:,[i]] = W_out @ x_cur + out_bias
-        x_all[:,[i]] = x_cur # record current state in all state vector as samples for MOR later
+        sample_all[:,[i]] = sample # record current state in all state vector as samples for MOR later
         x_pre = x_cur
-    return y_out, x_all
+    return y_out, sample_all
 
-def esn_red_sim(W, W_in, W_out_r, out_bias, V, inputs):
+def esn_red_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, inputs):
     # simulate the reduced ESN state space model without DEIM
     print("** simulating the reduced model...")
     order = V.shape[1]
@@ -93,12 +95,12 @@ def esn_red_sim(W, W_in, W_out_r, out_bias, V, inputs):
     y_out_r = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
     # print("shape_inputs: ", inputs.shape)
     for i in range(inputs[0].shape[0]):    
-        x_cur_r = V.T@np.tanh(W@V@x_pre_r + W_in@tf.reshape(inputs[0,i,:],[num_outputs,1]))
+        x_cur_r = (1-leaky_ratio)*x_pre_r + leaky_ratio*V.T@np.tanh(W@V@x_pre_r + W_in@tf.reshape(inputs[0,i,:],[num_outputs,1]))
         y_out_r[:,[i]] = W_out_r @ x_cur_r + out_bias
         x_pre_r = x_cur_r
     return y_out_r
 
-def esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, inputs):
+def esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, inputs):
     # simulate the reduced ESN model with DEIM
     print("** simulating the DEIM reduced model...")
     order = W_deim.shape[0]
@@ -106,18 +108,18 @@ def esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, inputs):
     x_pre_deim = np.zeros((order,1)) # initiate state as zeros if esn model use default zero initial state
     y_out_deim = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
     for i in range(inputs[0].shape[0]):    
-        x_cur_deim = E_deim@np.tanh(W_deim@x_pre_deim + W_in_deim@tf.reshape(inputs[0,i,:],[num_outputs,1]))
+        x_cur_deim = (1-leaky_ratio)*x_pre_deim + leaky_ratio*E_deim@np.tanh(W_deim@x_pre_deim + W_in_deim@tf.reshape(inputs[0,i,:],[num_outputs,1]))
         y_out_deim[:,[i]] = W_out_deim @ x_cur_deim + out_bias
         x_pre_deim = x_cur_deim
     return y_out_deim
 
-def esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, stime):
+def esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, stime):
     # create reduced ESN network and assign weights
     print("** creating reduced ESN network and assigning weights...")
     order = W_deim.shape[0]
     num_inputs = W_in_deim.shape[1]
     num_outputs = W_out_deim.shape[0]
-    recurrent_layer_red =  ESNRed(units=order, leaky=1, activation='tanh', connectivity=1, input_shape=(stime, num_inputs), return_sequences=True, use_bias=False, name="nn")
+    recurrent_layer_red =  ESNRed(units=order, leaky=leaky_ratio, activation='tanh', connectivity=1, input_shape=(stime, num_inputs), return_sequences=True, use_bias=False, name="nn")
     output_red = keras.layers.Dense(num_outputs, name="readouts")
     # put all together in a keras sequential model
     model_red = keras.models.Sequential()

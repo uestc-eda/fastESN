@@ -10,11 +10,12 @@ data_select = 1 # can only be 1, 2, 3
 stime_train = 2000 # sample number for training
 stime_val = 200 # sample number for validation
 epochs = 200
-num_units = 100 # original ESN network hidden unit number
+num_units = 200 # original ESN network hidden unit number
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
 sample_step = 3 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
 order = 20 # reduced order
+leaky_ratio = 1 # leaky ratio of ESN
 
 # generate data for training and validation
 if data_select == 1:
@@ -49,7 +50,7 @@ t, = plt.plot(y_train[0,:,out_plt_index], color="black", linestyle='dashed')
 plt.xlabel("Timesteps")
 plt.legend([i, t], ['input', "target"])
 
-recurrent_layer = tfa.layers.ESN(units=num_units, leaky=1, activation='tanh', connectivity=0.7, input_shape=(stime_train, num_inputs), return_sequences=True, use_bias=False, name="nn")
+recurrent_layer = tfa.layers.ESN(units=num_units, leaky=leaky_ratio, activation='tanh', connectivity=0.7, input_shape=(stime_train, num_inputs), return_sequences=True, use_bias=False, name="nn")
 
 # Build the readout layer
 output = keras.layers.Dense(num_outputs, name="readouts")
@@ -90,22 +91,22 @@ y_esn_val = model(u_val)
 W, W_in, W_out, out_bias = mor_esn.esn_matrix_extract(model)
 
 # simulate the state space ESN model
-y_out, x_all = mor_esn.esn_ss_sim(W, W_in, W_out, out_bias, u_val)
+y_out, sample_all = mor_esn.esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, u_val)
 
 # perform MOR on ESN model
-W_r, W_in_r, W_out_r, V = mor_esn.mor_esn(W, W_in, W_out, out_bias, x_all, sample_step, order)
+W_r, W_in_r, W_out_r, V = mor_esn.mor_esn(W, W_in, W_out, out_bias, sample_all, sample_step, order)
 
 # simulate the reduced ESN model without DEIM
-y_out_r = mor_esn.esn_red_sim(W, W_in, W_out_r, out_bias, V, u_val)
+y_out_r = mor_esn.esn_red_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, u_val)
 
 # perform MOR with deim
-W_deim, W_in_deim, E_deim, W_out_deim = mor_esn.deim_whole(W, W_in, W_out, V, x_all, order)
+W_deim, W_in_deim, E_deim, W_out_deim = mor_esn.deim_whole(W, W_in, W_out, V, sample_all, sample_step, order)
 
 # simulate the reduced ESN model with DEIM
-y_out_deim = mor_esn.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, u_val)
+y_out_deim = mor_esn.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, u_val)
 
 # generate the reduced ESN network and assign weights
-model_red = mor_esn.esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, stime_val)
+model_red = mor_esn.esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, stime_val)
 
 # simulate the reduced ESN network
 y_out_esn_red = model_red(u_val) 
@@ -115,12 +116,12 @@ plt.figure()
 # i, = plt.plot(u_val[0], color="blue")
 t, = plt.plot(y_val[0,:,out_plt_index], color="black")
 o, = plt.plot(y_esn_val[0,:,out_plt_index], color="red", linestyle='solid')
-# m, = plt.plot(y_out[out_plt_index,:], color="green", linestyle='dashed')
+m, = plt.plot(y_out[out_plt_index,:], color="yellow", linestyle='dashed')
 r, = plt.plot(y_out_r[out_plt_index,:], color="magenta", linestyle='dotted')
 d, = plt.plot(y_out_deim[out_plt_index,:], color="blue", linestyle='dashdot')
 n, = plt.plot(y_out_esn_red[0,:,out_plt_index], color="green", linestyle='dashed')
 plt.xlabel("Timesteps")
-plt.legend([t, o, r, d, n], ["target", "readout", "reduced", "deim red", "esn red"])
+plt.legend([t, o, r, d, n, m], ["target", "readout", "reduced", "deim red", "esn red", "ss model"])
 
 plt.show()
 
