@@ -25,7 +25,7 @@ from tensorflow_addons.utils.types import (
 
 
 @tf.keras.utils.register_keras_serializable(package="Addons")
-class ESNRedCell(keras.layers.AbstractRNNCell):
+class MiniESNCell(keras.layers.AbstractRNNCell):
     """Reduced Echo State recurrent Network (ESN) cell.
     Arguments:
         units: Positive integer, dimensionality in the reservoir.

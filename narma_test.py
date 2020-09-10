@@ -6,6 +6,7 @@ import tensorflow.keras as keras
 import mor_esn
 import tensorflow as tf
 
+###################################### parameters ########################################
 data_select = 3 # can only be 1, 2, 3
 stime_train = 2000 # sample number for training
 stime_val = 200 # sample number for validation
@@ -17,7 +18,7 @@ sample_step = 3 # the POD sample step (in time) in MOR, smaller value means fine
 order = 20 # reduced order
 leaky_ratio = 0.7 # leaky ratio of ESN
 
-# generate data for training and validation
+######################## generate data for training and validation ###############################
 if data_select == 1:
     y_train, u_train = data_generate.narma_10_gen(stime_train)
     y_val, u_val = data_generate.narma_10_gen(stime_val)
@@ -50,6 +51,7 @@ t, = plt.plot(y_train[0,:,out_plt_index], color="black", linestyle='dashed')
 plt.xlabel("Timesteps")
 plt.legend([i, t], ['input', "target"])
 
+############################ construct the original ESM (without training it yet) #######################################
 recurrent_layer = tfa.layers.ESN(units=num_units, leaky=leaky_ratio, activation='tanh', connectivity=0.7, input_shape=(stime_train, num_inputs), return_sequences=True, use_bias=False, name="nn")
 
 # Build the readout layer
@@ -61,6 +63,8 @@ optimizer = keras.optimizers.Adam(learning_rate=0.01)
 model = keras.models.Sequential()
 model.add(recurrent_layer)
 model.add(output)
+
+################## construct the MiniESN using the untrained original ESN model, then train the MiniESN #######################
 
 # extract the matrices before training, W_p, W_in_p, out_bias_p should be the same as W, W_in, out_bias later because they cannot be trained
 W_p, W_in_p, W_out_p, out_bias_p = mor_esn.esn_matrix_extract(model)
@@ -75,11 +79,10 @@ W_r_p, W_in_r_p, W_out_r_p, V_p = mor_esn.mor_esn(W_p, W_in_p, W_out_p, out_bias
 W_deim_p, W_in_deim_p, E_deim_p, W_out_deim_p = mor_esn.deim_whole(W_p, W_in_p, W_out_p, V_p, sample_all_p, sample_step, order)
 
 # generate the untrained reduced ESN network and assign weights
-model_red_p = mor_esn.esn_deim_assign(E_deim_p, W_deim_p, W_in_deim_p, W_out_deim_p, out_bias_p, leaky_ratio, stime_val)
+model_red_p = mor_esn.esn_deim_assign(E_deim_p, W_deim_p, W_in_deim_p, W_out_deim_p, out_bias_p, leaky_ratio, stime_train)
 
 # training the reduced ESN
 model_red_p.compile(loss="mse", optimizer=optimizer)
-model_red_p.summary()
 hist_p = model_red_p.fit(u_train, y_train, epochs=epochs, verbose=0)
 
 plt.figure()
@@ -89,7 +92,7 @@ plt.legend([loss_p, logloss_p], ["loss","log10(loss)"])
 
 y_out_esn_red_p = model_red_p(u_val)
 
-
+###################################### train the original ESN ######################################
 # training the original ESN
 model.compile(loss="mse", optimizer=optimizer)
 model.summary()
@@ -100,7 +103,7 @@ loss, = plt.plot(hist.history['loss'])
 logloss, = plt.plot(np.log10(hist.history['loss']))
 plt.legend([loss, logloss], ["loss","log10(loss)"])
 
-y_esn_train = model(u_train) 
+# y_esn_train = model(u_train) 
 
 # print("** ploting the final results...")
 # plt.figure()
@@ -111,6 +114,9 @@ y_esn_train = model(u_train)
 # plt.legend([i, t, o], ['input', "target", "readout"])
 
 y_esn_val = model(u_val)
+
+
+########################### construct MiniESN using the trained ESN ###################################
 
 # extract the ESN model in state space form
 W, W_in, W_out, out_bias = mor_esn.esn_matrix_extract(model)
@@ -136,6 +142,32 @@ model_red = mor_esn.esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_b
 # simulate the reduced ESN network
 y_out_esn_red = model_red(u_val) 
 
+############### construct an ESN with the same size of MiniESN, for accuracy comparison #################
+recurrent_layer_small = tfa.layers.ESN(units=order, leaky=leaky_ratio, activation='tanh', connectivity=1, input_shape=(stime_train, num_inputs), return_sequences=True, use_bias=False, name="nn")
+
+# Build the readout layer
+output_small = keras.layers.Dense(num_outputs, name="readouts")
+# initialize the adam optimizer for training
+optimizer = keras.optimizers.Adam(learning_rate=0.01)
+
+# put all together in a keras sequential model
+model_small = keras.models.Sequential()
+model_small.add(recurrent_layer_small)
+model_small.add(output_small)
+
+# training the original ESN
+model_small.compile(loss="mse", optimizer=optimizer)
+model_small.summary()
+hist_small = model_small.fit(u_train, y_train, epochs=epochs, verbose=0)
+
+plt.figure()
+loss_small, = plt.plot(hist_small.history['loss'])
+logloss_small, = plt.plot(np.log10(hist_small.history['loss']))
+plt.legend([loss_small, logloss_small], ["loss","log10(loss)"])
+
+y_esn_small_val = model_small(u_val)
+
+######################### plot the accuracy comparison results ##################################
 
 plt.figure()
 # i, = plt.plot(u_val[0], color="blue")
@@ -146,8 +178,9 @@ r, = plt.plot(y_out_r[out_plt_index,:], color="magenta", linestyle='dotted')
 # d, = plt.plot(y_out_deim[out_plt_index,:], color="blue", linestyle='dashdot')
 n, = plt.plot(y_out_esn_red[0,:,out_plt_index], color="green", linestyle='dashed')
 e, = plt.plot(y_out_esn_red_p[0,:,out_plt_index], color="blue", linestyle='dashdot')
+s, = plt.plot(y_esn_small_val[0,:,out_plt_index], color="yellow", linestyle='dashed')
 plt.xlabel("Timesteps")
-plt.legend([t, o, r, n, e], ["target", "readout", "reduced", "esn red", "MiniESN self trained"])
+plt.legend([t, o, r, n, e, s], ["target", "ESN org", "reduced", "MiniESN with trained ESN", "MiniESN self trained", "ESN small"])
 
 plt.show()
 

@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
-from esn_red import ESNRed
+from esn_red import MiniESN
 
 def mor_esn(W, W_in, W_out, out_bias, sample_all, sample_step, order):
     # sample_step = x_all.shape[1]//n_sample # integer floor division "//" to compute integer sample_step
@@ -119,7 +119,7 @@ def esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio
     order = W_deim.shape[0]
     num_inputs = W_in_deim.shape[1]
     num_outputs = W_out_deim.shape[0]
-    recurrent_layer_red =  ESNRed(units=order, leaky=leaky_ratio, activation='tanh', connectivity=1, input_shape=(stime, num_inputs), return_sequences=True, use_bias=False, name="nn")
+    recurrent_layer_red =  MiniESN(units=order, leaky=leaky_ratio, activation='tanh', connectivity=1, input_shape=(stime, num_inputs), return_sequences=True, use_bias=False, name="nn")
     output_red = keras.layers.Dense(num_outputs, name="readouts")
     # put all together in a keras sequential model
     model_red = keras.models.Sequential()

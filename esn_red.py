@@ -15,7 +15,7 @@
 """Implements Echo State recurrent Network (ESN) layer."""
 
 import tensorflow as tf
-from esn_red_cell import ESNRedCell
+from esn_red_cell import MiniESNCell
 from typeguard import typechecked
 
 from tensorflow_addons.utils.types import (
@@ -27,10 +27,10 @@ from tensorflow_addons.utils.types import (
 
 
 @tf.keras.utils.register_keras_serializable(package="Addons")
-class ESNRed(tf.keras.layers.RNN):
+class MiniESN(tf.keras.layers.RNN):
     """Reduced Echo State Network layer.
 
-    This implements the recurrent layer using the ESNRedCell.
+    This implements the recurrent layer using the MiniESNCell.
 
     Arguments:
         units: Positive integer, dimensionality of the reservoir.
@@ -104,7 +104,7 @@ class ESNRed(tf.keras.layers.RNN):
         unroll=False,
         **kwargs
     ):
-        cell = ESNRedCell(
+        cell = MiniESNCell(
             units,
             connectivity=connectivity,
             leaky=leaky,
