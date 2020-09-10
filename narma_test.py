@@ -6,7 +6,7 @@ import tensorflow.keras as keras
 import mor_esn
 import tensorflow as tf
 
-data_select = 1 # can only be 1, 2, 3
+data_select = 3 # can only be 1, 2, 3
 stime_train = 2000 # sample number for training
 stime_val = 200 # sample number for validation
 epochs = 200
@@ -15,7 +15,7 @@ out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
 sample_step = 3 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
 order = 20 # reduced order
-leaky_ratio = 1 # leaky ratio of ESN
+leaky_ratio = 0.7 # leaky ratio of ESN
 
 # generate data for training and validation
 if data_select == 1:
