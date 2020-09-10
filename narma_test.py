@@ -62,12 +62,37 @@ model = keras.models.Sequential()
 model.add(recurrent_layer)
 model.add(output)
 
+# extract the matrices before training, W_p, W_in_p, out_bias_p should be the same as W, W_in, out_bias later because they cannot be trained
+W_p, W_in_p, W_out_p, out_bias_p = mor_esn.esn_matrix_extract(model)
+
+# simulate the untrained state space ESN model, y_out_p is inaccurate (of course since ESN is untrained), but sample_all_p can still be used to reduce ESN
+y_out_p, sample_all_p = mor_esn.esn_ss_sim(W_p, W_in_p, W_out_p, out_bias_p, leaky_ratio, u_val)
+
+# perform MOR on the untrained ESN model
+W_r_p, W_in_r_p, W_out_r_p, V_p = mor_esn.mor_esn(W_p, W_in_p, W_out_p, out_bias_p, sample_all_p, sample_step, order)
+
+# perform MOR with deim on the untrained ESN model
+W_deim_p, W_in_deim_p, E_deim_p, W_out_deim_p = mor_esn.deim_whole(W_p, W_in_p, W_out_p, V_p, sample_all_p, sample_step, order)
+
+# generate the untrained reduced ESN network and assign weights
+model_red_p = mor_esn.esn_deim_assign(E_deim_p, W_deim_p, W_in_deim_p, W_out_deim_p, out_bias_p, leaky_ratio, stime_val)
+
+# training the reduced ESN
+model_red_p.compile(loss="mse", optimizer=optimizer)
+model_red_p.summary()
+hist_p = model_red_p.fit(u_train, y_train, epochs=epochs, verbose=0)
+
+plt.figure()
+loss_p, = plt.plot(hist_p.history['loss'])
+logloss_p, = plt.plot(np.log10(hist_p.history['loss']))
+plt.legend([loss_p, logloss_p], ["loss","log10(loss)"])
+
+y_out_esn_red_p = model_red_p(u_val)
+
+
+# training the original ESN
 model.compile(loss="mse", optimizer=optimizer)
 model.summary()
-
-# inner = model.get_layer("nn")(inputs) 
-# outputs = model(inputs) 
-
 hist = model.fit(u_train, y_train, epochs=epochs, verbose=0)
 
 plt.figure()
@@ -116,12 +141,13 @@ plt.figure()
 # i, = plt.plot(u_val[0], color="blue")
 t, = plt.plot(y_val[0,:,out_plt_index], color="black")
 o, = plt.plot(y_esn_val[0,:,out_plt_index], color="red", linestyle='solid')
-m, = plt.plot(y_out[out_plt_index,:], color="yellow", linestyle='dashed')
+# m, = plt.plot(y_out[out_plt_index,:], color="yellow", linestyle='dashed')
 r, = plt.plot(y_out_r[out_plt_index,:], color="magenta", linestyle='dotted')
-d, = plt.plot(y_out_deim[out_plt_index,:], color="blue", linestyle='dashdot')
+# d, = plt.plot(y_out_deim[out_plt_index,:], color="blue", linestyle='dashdot')
 n, = plt.plot(y_out_esn_red[0,:,out_plt_index], color="green", linestyle='dashed')
+e, = plt.plot(y_out_esn_red_p[0,:,out_plt_index], color="blue", linestyle='dashdot')
 plt.xlabel("Timesteps")
-plt.legend([t, o, r, d, n, m], ["target", "readout", "reduced", "deim red", "esn red", "ss model"])
+plt.legend([t, o, r, n, e], ["target", "readout", "reduced", "esn red", "MiniESN self trained"])
 
 plt.show()
 
