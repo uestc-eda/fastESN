@@ -19,15 +19,17 @@ def esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, inputs):
     num_units = W.shape[0]
     num_outputs = W_out.shape[0]
     x_pre = np.zeros((num_units,1)) # initiate state as zeros if esn model use default zero initial state
-    sample_all = np.zeros((num_units, inputs.shape[1])) # store all the states, will be used as samples for MOR
+    g_sample_all = np.zeros((num_units, inputs.shape[1])) # store all the activation function (function g() in paper) values, will be used as samples for MOR
+    x_sample_all = np.zeros((num_units, inputs.shape[1])) # store all the states, will be used as samples for training and MOR
     y_out = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
     for i in range(inputs[0].shape[0]):    
-        sample = leaky_ratio*np.tanh(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[num_outputs,1]))
-        x_cur = (1-leaky_ratio)*x_pre + sample
+        g_sample = leaky_ratio*np.tanh(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[num_outputs,1]))
+        x_cur = (1-leaky_ratio)*x_pre + g_sample
         y_out[:,[i]] = W_out @ x_cur + out_bias
-        sample_all[:,[i]] = sample # record current state in all state vector as samples for MOR later
+        g_sample_all[:,[i]] = g_sample # record current activation function (function g() in paper) values as samples for MOR later
+        x_sample_all[:,[i]] = x_cur # record current state in all state vector as samples for training and MOR
         x_pre = x_cur
-    return y_out, sample_all
+    return y_out, g_sample_all, x_sample_all
 
 def esn_red_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, inputs):
     # simulate the reduced ESN state space model without DEIM
@@ -50,11 +52,13 @@ def esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, i
     num_outputs = W_out_deim.shape[0]
     x_pre_deim = np.zeros((order,1)) # initiate state as zeros if esn model use default zero initial state
     y_out_deim = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
+    x_sample_deim_all = np.zeros((order, inputs.shape[1])) # store all the states, will be used as samples for training
     for i in range(inputs[0].shape[0]):    
         x_cur_deim = (1-leaky_ratio)*x_pre_deim + leaky_ratio*E_deim@np.tanh(W_deim@x_pre_deim + W_in_deim@tf.reshape(inputs[0,i,:],[num_outputs,1]))
+        x_sample_deim_all[:,[i]] = x_cur_deim # record current state in all state vector as samples for training
         y_out_deim[:,[i]] = W_out_deim @ x_cur_deim + out_bias
         x_pre_deim = x_cur_deim
-    return y_out_deim
+    return y_out_deim, x_sample_deim_all
 
 def esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, stime):
     # create reduced ESN network and assign weights
@@ -76,3 +80,19 @@ def esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio
     out_bias = tf.reshape(out_bias, [num_outputs])
     model_red.layers[1].weights[1].assign(tf.transpose(out_bias))
     return model_red
+
+def esn_train(x_all, y_train):
+    # num_outputs = W_out.shape[0]
+    # num_units = W_out.shape[1]
+    # n_t = x_all.shape[1]
+    print("x_all_shape: ", x_all.shape)
+    print("y_train_shape: ", y_train.shape)
+    W_out = np.linalg.solve(x_all@(x_all.T),x_all@(y_train.T)).T
+    W_out = W_out.astype('float32') # convert to float to be compatible with tensorflow
+    # W_out = np.linalg.solve(x_all.T,y_train.T).T
+    return W_out
+
+def esn_assign(model, W_out):
+    print("** assigning the trained weights to ESN...")
+    model.layers[1].weights[0].assign(tf.transpose(W_out))
+    return model
