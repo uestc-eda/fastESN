@@ -9,15 +9,15 @@ import tensorflow as tf
 
 ###################################### parameters ########################################
 data_select = 3 # can only be 1, 2, 3
-stime_train = 2000 # sample number for training
-stime_val = 200 # sample number for validation
+stime_train = 20000 # sample number for training
+stime_val = 2000 # sample number for validation
 epochs = 200
-num_units = 100 # original ESN network hidden unit number
+num_units = 400 # original ESN network hidden unit number
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
-sample_step = 3 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
-order = 30 # reduced order
-leaky_ratio = 0.7 # leaky ratio of ESN
+sample_step = 10 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
+order = 50 # reduced order
+leaky_ratio = 1 # leaky ratio of ESN
 
 ######################## generate data for training and validation ###############################
 if data_select == 1:
@@ -64,6 +64,7 @@ optimizer = keras.optimizers.Adam(learning_rate=0.01)
 model = keras.models.Sequential()
 model.add(recurrent_layer)
 model.add(output)
+model.summary()
 
 ################## construct the MiniESN using the untrained original ESN model, then train the MiniESN #######################
 
@@ -178,6 +179,7 @@ optimizer = keras.optimizers.Adam(learning_rate=0.01)
 model_small = keras.models.Sequential()
 model_small.add(recurrent_layer_small)
 model_small.add(output_small)
+model_small.summary()
 
 # extract the matrices before training, W_p, W_in_p, out_bias_p should be the same as W, W_in, out_bias later because they cannot be trained
 W_small, W_in_small, W_out_small, out_bias_small = miniesn_tools.esn_matrix_extract(model_small)
@@ -212,7 +214,7 @@ o, = plt.plot(y_esn_val[0,:,out_plt_index], color="red", linestyle='solid')
 # d, = plt.plot(y_out_deim[out_plt_index,:], color="blue", linestyle='dashdot')
 # n, = plt.plot(y_out_esn_red[0,:,out_plt_index], color="green", linestyle='dashed')
 e, = plt.plot(y_out_esn_red_p[0,:,out_plt_index], color="blue", linestyle='dashdot')
-s, = plt.plot(y_esn_small_val[0,:,out_plt_index], color="yellow", linestyle='dashed')
+s, = plt.plot(y_esn_small_val[0,:,out_plt_index], color="green", linestyle='dashed')
 plt.xlabel("Timesteps")
 plt.legend([t, o, e, s], ["target", "ESN org", "MiniESN self trained", "ESN small"])
 
