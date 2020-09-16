@@ -3,7 +3,8 @@ import data_generate
 import matplotlib.pyplot as plt
 import tensorflow_addons as tfa
 import tensorflow.keras as keras
-import mor_esn
+import miniesn_gen
+import miniesn_tools
 import tensorflow as tf
 
 ###################################### parameters ########################################
@@ -67,19 +68,19 @@ model.add(output)
 ################## construct the MiniESN using the untrained original ESN model, then train the MiniESN #######################
 
 # extract the matrices before training, W_p, W_in_p, out_bias_p should be the same as W, W_in, out_bias later because they cannot be trained
-W_p, W_in_p, W_out_p, out_bias_p = mor_esn.esn_matrix_extract(model)
+W_p, W_in_p, W_out_p, out_bias_p = miniesn_tools.esn_matrix_extract(model)
 
 # simulate the untrained state space ESN model, y_out_p is inaccurate (of course since ESN is untrained), but sample_all_p can still be used to reduce ESN
-y_out_p, sample_all_p = mor_esn.esn_ss_sim(W_p, W_in_p, W_out_p, out_bias_p, leaky_ratio, u_val)
+y_out_p, sample_all_p = miniesn_tools.esn_ss_sim(W_p, W_in_p, W_out_p, out_bias_p, leaky_ratio, u_val)
 
 # perform MOR on the untrained ESN model
-W_r_p, W_in_r_p, W_out_r_p, V_p = mor_esn.mor_esn(W_p, W_in_p, W_out_p, out_bias_p, sample_all_p, sample_step, order)
+W_r_p, W_in_r_p, W_out_r_p, V_p = miniesn_gen.mor_esn(W_p, W_in_p, W_out_p, out_bias_p, sample_all_p, sample_step, order)
 
 # perform MOR with deim on the untrained ESN model
-W_deim_p, W_in_deim_p, E_deim_p, W_out_deim_p = mor_esn.deim_whole(W_p, W_in_p, W_out_p, V_p, sample_all_p, sample_step, order)
+W_deim_p, W_in_deim_p, E_deim_p, W_out_deim_p = miniesn_gen.miniesn_gen(W_p, W_in_p, W_out_p, V_p, sample_all_p, sample_step, order)
 
 # generate the untrained reduced ESN network and assign weights
-model_red_p = mor_esn.esn_deim_assign(E_deim_p, W_deim_p, W_in_deim_p, W_out_deim_p, out_bias_p, leaky_ratio, stime_train)
+model_red_p = miniesn_tools.esn_deim_assign(E_deim_p, W_deim_p, W_in_deim_p, W_out_deim_p, out_bias_p, leaky_ratio, stime_train)
 
 # training the reduced ESN
 model_red_p.compile(loss="mse", optimizer=optimizer)
@@ -119,25 +120,25 @@ y_esn_val = model(u_val)
 ########################### construct MiniESN using the trained ESN ###################################
 
 # extract the ESN model in state space form
-W, W_in, W_out, out_bias = mor_esn.esn_matrix_extract(model)
+W, W_in, W_out, out_bias = miniesn_tools.esn_matrix_extract(model)
 
 # simulate the state space ESN model
-y_out, sample_all = mor_esn.esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, u_val)
+y_out, sample_all = miniesn_tools.esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, u_val)
 
 # perform MOR on ESN model
-W_r, W_in_r, W_out_r, V = mor_esn.mor_esn(W, W_in, W_out, out_bias, sample_all, sample_step, order)
+W_r, W_in_r, W_out_r, V = miniesn_gen.mor_esn(W, W_in, W_out, out_bias, sample_all, sample_step, order)
 
 # simulate the reduced ESN model without DEIM
-y_out_r = mor_esn.esn_red_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, u_val)
+y_out_r = miniesn_tools.esn_red_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, u_val)
 
 # perform MOR with deim
-W_deim, W_in_deim, E_deim, W_out_deim = mor_esn.deim_whole(W, W_in, W_out, V, sample_all, sample_step, order)
+W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, V, sample_all, sample_step, order)
 
 # simulate the reduced ESN model with DEIM
-y_out_deim = mor_esn.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, u_val)
+y_out_deim = miniesn_tools.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, u_val)
 
 # generate the reduced ESN network and assign weights
-model_red = mor_esn.esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, stime_val)
+model_red = miniesn_tools.esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, stime_val)
 
 # simulate the reduced ESN network
 y_out_esn_red = model_red(u_val) 
