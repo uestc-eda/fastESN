@@ -24,7 +24,7 @@ def miniesn_gen(W, W_in, W_out, V, sample_all, sample_step, order_deim):
 
     W_deim = P.T@W@V
     W_in_deim = P.T@W_in
-    E_deim = V.T@U@np.linalg.inv(P.T@U)
+    E_deim = np.linalg.solve(U.T@P, U.T@V).T # in original math: E_deim = V.T@U@np.linalg.inv(P.T@U)
     E_deim = E_deim.astype('float32') # convert to float to be compatible with tensorflow
     W_out_deim = W_out@V
 
@@ -50,10 +50,17 @@ def deim_core(U):
         c = np.linalg.solve(P[:,0:i].T@U[:,0:i], P[:,0:i].T@U[:,i])
         # print("c=",c)
         res = U[:,i] - U[:,0:i]@c
+        # print("res=",res)
         idx[i] = np.argmax(np.absolute(res))
         P[idx[i],i] = 1 # set the ith column of P
-
+        # c_after = np.linalg.solve(P[:,0:i+1].T@U[:,0:i+1], P[:,0:i+1].T@U[:,i])
+        # res_after = U[:,i] - U[:,0:i+1]@c_after
+        # print("res_after=",res_after)
+    # c = np.linalg.solve(P[:,0:order_deim].T@U[:,0:order_deim], P[:,0:order_deim].T@U[:,order_deim-1])
+    # res = U[:,order_deim-1] - U[:,0:order_deim]@c
+    # print("res=",res)
+    # print("U=", U)
     # print("P=", P)
-    print("idx=", idx)
+    # print("idx=", idx)
     return idx, P
 

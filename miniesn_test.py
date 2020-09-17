@@ -8,16 +8,17 @@ import miniesn_tools
 import tensorflow as tf
 
 ###################################### parameters ########################################
-data_select = 3 # can only be 1, 2, 3
-stime_train = 20000 # sample number for training
-stime_val = 2000 # sample number for validation
-epochs = 200
-num_units = 400 # original ESN network hidden unit number
+data_select = 1 # can only be 1, 2, 3
+stime_train = 2000 # sample number for training
+stime_val = 200 # sample number for validation
+epochs = 50
+num_units = 50 # original ESN network hidden unit number
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
 sample_step = 10 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
 order = 50 # reduced order
 leaky_ratio = 1 # leaky ratio of ESN
+connectivity_ratio = 1 # connectivity ratio of the ESN internal layer
 
 ######################## generate data for training and validation ###############################
 if data_select == 1:
@@ -53,7 +54,7 @@ plt.xlabel("Timesteps")
 plt.legend([i, t], ['input', "target"])
 
 ############################ construct the original ESM (without training it yet) #######################################
-recurrent_layer = tfa.layers.ESN(units=num_units, leaky=leaky_ratio, activation='tanh', connectivity=0.7, input_shape=(stime_train, num_inputs), return_sequences=True, use_bias=False, name="nn")
+recurrent_layer = tfa.layers.ESN(units=num_units, leaky=leaky_ratio, activation='tanh', connectivity=connectivity_ratio, input_shape=(stime_train, num_inputs), return_sequences=True, use_bias=False, name="nn")
 
 # Build the readout layer
 output = keras.layers.Dense(num_outputs, name="readouts")
@@ -80,25 +81,28 @@ W_r_p, W_in_r_p, W_out_r_p, V_p = miniesn_gen.mor_esn(W_p, W_in_p, W_out_p, out_
 # perform MOR with deim on the untrained ESN model
 W_deim_p, W_in_deim_p, E_deim_p, W_out_deim_p = miniesn_gen.miniesn_gen(W_p, W_in_p, W_out_p, V_p, g_sample_all_p, sample_step, order)
 
-# train MiniESN
+# train MiniESN using standard regression
 # first, simulate MiniESN using training input (x_sample_deim_all_train) to obtain the state samples for training, the output y_untrained_deim will not be used because it is inaccurate
 y_untrained_deim, x_sample_deim_all_train = miniesn_tools.esn_deim_sim(E_deim_p, W_deim_p, W_in_deim_p, W_out_deim_p, out_bias_p, leaky_ratio, u_train)
 # training using linear regression
-W_out_deim_p = miniesn_tools.esn_train(x_sample_deim_all_train, y_train[0].T)
+W_out_deim_p_lr = miniesn_tools.esn_train(x_sample_deim_all_train, y_train[0].T)
 
 # generate MiniESN and assign weights
-model_red_p = miniesn_tools.esn_deim_assign(E_deim_p, W_deim_p, W_in_deim_p, W_out_deim_p, out_bias_p, leaky_ratio, stime_train)
+model_red_p_lr = miniesn_tools.esn_deim_assign(E_deim_p, W_deim_p, W_in_deim_p, W_out_deim_p_lr, out_bias_p, leaky_ratio, stime_train)
 
-# training the reduced ESN
-# model_red_p.compile(loss="mse", optimizer=optimizer)
-# hist_p = model_red_p.fit(u_train, y_train, epochs=epochs, verbose=0)
+y_out_esn_red_p_lr = model_red_p_lr(u_val)
 
-# plt.figure()
-# loss_p, = plt.plot(hist_p.history['loss'])
-# logloss_p, = plt.plot(np.log10(hist_p.history['loss']))
-# plt.legend([loss_p, logloss_p], ["loss","log10(loss)"])
+# train MiniESN using back propagation
+model_red_p_bp = model_red_p_lr # intiate network using model_red_p_lr
+model_red_p_bp.compile(loss="mse", optimizer=optimizer)
+hist_p_bp = model_red_p_bp.fit(u_train, y_train, epochs=epochs, verbose=0)
 
-y_out_esn_red_p = model_red_p(u_val)
+plt.figure()
+loss_p_bp, = plt.plot(hist_p_bp.history['loss'])
+logloss_p_bp, = plt.plot(np.log10(hist_p_bp.history['loss']))
+plt.legend([loss_p_bp, logloss_p_bp], ["loss","log10(loss)"])
+
+y_out_esn_red_p_bp = model_red_p_bp(u_val)
 
 ###################################### train the original ESN ######################################
 # training the original ESN
@@ -168,7 +172,7 @@ model_red = miniesn_tools.esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim,
 y_out_esn_red = model_red(u_val) 
 
 ############### construct an ESN with the same size of MiniESN, for accuracy comparison #################
-recurrent_layer_small = tfa.layers.ESN(units=order, leaky=leaky_ratio, activation='tanh', connectivity=1, input_shape=(stime_train, num_inputs), return_sequences=True, use_bias=False, name="nn")
+recurrent_layer_small = tfa.layers.ESN(units=order, leaky=leaky_ratio, activation='tanh', connectivity=connectivity_ratio, input_shape=(stime_train, num_inputs), return_sequences=True, use_bias=False, name="nn")
 
 # Build the readout layer
 output_small = keras.layers.Dense(num_outputs, name="readouts")
@@ -211,12 +215,20 @@ t, = plt.plot(y_val[0,:,out_plt_index], color="black")
 o, = plt.plot(y_esn_val[0,:,out_plt_index], color="red", linestyle='solid')
 # m, = plt.plot(y_out[out_plt_index,:], color="yellow", linestyle='dashed')
 # r, = plt.plot(y_out_r[out_plt_index,:], color="magenta", linestyle='dotted')
-# d, = plt.plot(y_out_deim[out_plt_index,:], color="blue", linestyle='dashdot')
 # n, = plt.plot(y_out_esn_red[0,:,out_plt_index], color="green", linestyle='dashed')
-e, = plt.plot(y_out_esn_red_p[0,:,out_plt_index], color="blue", linestyle='dashdot')
+e_lr, = plt.plot(y_out_esn_red_p_lr[0,:,out_plt_index], color="blue", linestyle='dashdot')
+e_bp, = plt.plot(y_out_esn_red_p_bp[0,:,out_plt_index], color="magenta", linestyle='dotted')
 s, = plt.plot(y_esn_small_val[0,:,out_plt_index], color="green", linestyle='dashed')
 plt.xlabel("Timesteps")
-plt.legend([t, o, e, s], ["target", "ESN org", "MiniESN self trained", "ESN small"])
+plt.legend([t, o, e_lr, e_bp, s], ["target", "ESN org", "MiniESN with lr", "MiniESN with bp", "ESN small"])
+
+plt.figure()
+t, = plt.plot(y_val[0,:,out_plt_index], color="black")
+o, = plt.plot(y_esn_val[0,:,out_plt_index], color="red", linestyle='solid')
+d, = plt.plot(y_out_esn_red[0,:,out_plt_index], color="green", linestyle='dashed')
+r, = plt.plot(y_out_r[out_plt_index, :], color="blue", linestyle='dotted')
+plt.xlabel("Timesteps")
+plt.legend([t, o, r, d], ["target", "ESN org", "SS Approx", "Red from ESN"])
 
 plt.show()
 
