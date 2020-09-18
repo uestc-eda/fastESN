@@ -9,14 +9,14 @@ import tensorflow as tf
 
 ###################################### parameters ########################################
 data_select = 1 # can only be 1, 2, 3
-stime_train = 2000 # sample number for training
+stime_train = 1000 # sample number for training
 stime_val = 200 # sample number for validation
-epochs = 50
-num_units = 50 # original ESN network hidden unit number
+epochs = 200
+num_units = 500 # original ESN network hidden unit number
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
-sample_step = 10 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
-order = 50 # reduced order
+sample_step = 4 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
+order = 20 # reduced order
 leaky_ratio = 1 # leaky ratio of ESN
 connectivity_ratio = 1 # connectivity ratio of the ESN internal layer
 
@@ -206,6 +206,16 @@ model_small = miniesn_tools.esn_assign(model_small, W_out_small)
 # plt.legend([loss_small, logloss_small], ["loss","log10(loss)"])
 
 y_esn_small_val = model_small(u_val)
+
+########################## compute the mse errors ############################
+mse_esn_small = np.mean((y_val[0, 50:, :] - y_esn_small_val[0, 50:, :])**2)
+mse_miniesn_bp = np.mean((y_val[0, 50:, :] - y_out_esn_red_p_bp[0, 50:, :])**2)
+mse_miniesn_lr = np.mean((y_val[0, 50:, :] - y_out_esn_red_p_lr[0, 50:, :])**2)
+mse_esn_org = np.mean((y_val[0, 50:, :] - y_esn_val[0, 50:, :])**2)
+print("mse_esn_small: ", mse_esn_small)
+print("mse_miniesn_bp: ", mse_miniesn_bp)
+print("mse_miniesn_lr: ", mse_miniesn_lr)
+print("mse_esn_org: ", mse_esn_org)
 
 ######################### plot the accuracy comparison results ##################################
 
