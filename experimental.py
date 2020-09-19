@@ -1,3 +1,5 @@
+# experimental test to analyze miniESN, some may not work
+
 import numpy as np
 import data_generate
 import matplotlib.pyplot as plt
@@ -10,13 +12,13 @@ import tensorflow as tf
 ###################################### parameters ########################################
 data_select = 3 # can only be 1, 2, 3
 stime_train = 1000 # sample number for training
-stime_val = 200 # sample number for validation
+stime_val = 100 # sample number for validation
 epochs = 200
-num_units = 100 # original ESN network hidden unit number
+num_units = 200 # original ESN network hidden unit number
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
-sample_step = 4 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
-order = 30 # reduced order
+sample_step = 1 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
+order = 20 # reduced order
 leaky_ratio = 1 # leaky ratio of ESN
 connectivity_ratio = 1 # connectivity ratio of the ESN internal layer
 activation_fun = 'tanh' # can only be 'tanh' or 'relu'
@@ -59,8 +61,6 @@ recurrent_layer = tfa.layers.ESN(units=num_units, leaky=leaky_ratio, activation=
 
 # Build the readout layer
 output = keras.layers.Dense(num_outputs, name="readouts")
-# initialize the adam optimizer for training
-optimizer = keras.optimizers.Adam(learning_rate=0.01)
 
 # put all together in a keras sequential model
 model = keras.models.Sequential()
@@ -93,40 +93,39 @@ model_red_p_lr = miniesn_tools.esn_deim_assign(E_deim_p, W_deim_p, W_in_deim_p, 
 
 y_out_esn_red_p_lr = model_red_p_lr(u_val)
 
-# train MiniESN using back propagation
-model_red_p_bp = model_red_p_lr # intiate network using model_red_p_lr
-model_red_p_bp.compile(loss="mse", optimizer=optimizer)
-hist_p_bp = model_red_p_bp.fit(u_train, y_train, epochs=epochs, verbose=0)
 
-plt.figure()
-loss_p_bp, = plt.plot(hist_p_bp.history['loss'])
-logloss_p_bp, = plt.plot(np.log10(hist_p_bp.history['loss']))
-plt.legend([loss_p_bp, logloss_p_bp], ["loss","log10(loss)"])
+################## construct the random MiniESN, train and simulate it #######################
+# miniESN with random E
+E_deim_random = np.random.rand(order, order)*2-1
+E_deim_random = E_deim_random.astype('float32')
+# simulate and train
+y_untrained_deim_random_E, x_sample_deim_all_train_random_E = miniesn_tools.esn_deim_sim(E_deim_random, W_deim_p, W_in_deim_p, W_out_deim_p, out_bias_p, leaky_ratio, activation_fun, u_train)
+W_out_deim_random_E = miniesn_tools.esn_train(x_sample_deim_all_train_random_E, y_train[0].T)
+# assign weights to the network
+miniesn_model_random_E = miniesn_tools.esn_deim_assign(E_deim_random, W_deim_p, W_in_deim_p, W_out_deim_random_E, out_bias_p, leaky_ratio, activation_fun, stime_train)
+# simulate the network
+y_out_esn_red_random_E = miniesn_model_random_E(u_val)
+# print('x_sample_deim_all_train_random_E', x_sample_deim_all_train_random_E)
 
-y_out_esn_red_p_bp = model_red_p_bp(u_val)
+# miniESN with random E, W, and W_in
+W_deim_random = np.random.rand(order, order)*2-1
+W_in_deim_random = np.random.rand(order, num_inputs)*2-1
+W_deim_random = W_deim_random.astype('float32')
+W_in_deim_random = W_in_deim_random.astype('float32')
+# simulate and train
+y_untrained_deim_random_all, x_sample_deim_all_train_random_all = miniesn_tools.esn_deim_sim(E_deim_random, W_deim_random, W_in_deim_random, W_out_deim_p, out_bias_p, leaky_ratio, activation_fun, u_train)
+W_out_deim_random_all = miniesn_tools.esn_train(x_sample_deim_all_train_random_all, y_train[0].T)
+# assign weights to the network
+miniesn_model_random_all = miniesn_tools.esn_deim_assign(E_deim_random, W_deim_random, W_in_deim_random, W_out_deim_random_all, out_bias_p, leaky_ratio, activation_fun, stime_train)
+# simulate the network
+y_out_esn_red_random_all = miniesn_model_random_all(u_val)
+# print('x_sample_deim_all_train_random_all', x_sample_deim_all_train_random_all)
+# print('W_deim_random: ', W_deim_random)
+# print('W_in_deim_random', W_in_deim_random)
 
 ###################################### train the original ESN ######################################
 # training the original ESN
-# model.compile(loss="mse", optimizer=optimizer)
-# model.summary()
-# hist = model.fit(u_train, y_train, epochs=epochs, verbose=0)
-
-# plt.figure()
-# loss, = plt.plot(hist.history['loss'])
-# logloss, = plt.plot(np.log10(hist.history['loss']))
-# plt.legend([loss, logloss], ["loss","log10(loss)"])
 W_out = miniesn_tools.esn_train(x_sample_all_p, y_train[0].T)
-
-# simulate the state space ESN model
-# y_out_test, g_sample_test, x_sample_test = miniesn_tools.esn_ss_sim(W_p, W_in_p, W_out, out_bias_p, leaky_ratio, u_train)
-
-# y_out_test = W_out@sample_all_p
-# plt.figure()
-# t, = plt.plot(y_train[0,:,out_plt_index], color="black", linestyle='dotted')
-# i, = plt.plot(y_out_test[out_plt_index,:], color="blue", linestyle='dashed')
-# plt.xlabel("Timesteps")
-# plt.legend([i, t], ['out_test', "target"])
-
 
 # assign the trained W_out back to ESN
 # model.layers[1].weights[0].assign(tf.transpose(W_out))
@@ -209,14 +208,14 @@ model_small = miniesn_tools.esn_assign(model_small, W_out_small)
 y_esn_small_val = model_small(u_val)
 
 ########################## compute the mse errors ############################
-mse_esn_small = np.mean((y_val[0, 50:, :] - y_esn_small_val[0, 50:, :])**2)
-mse_miniesn_bp = np.mean((y_val[0, 50:, :] - y_out_esn_red_p_bp[0, 50:, :])**2)
-mse_miniesn_lr = np.mean((y_val[0, 50:, :] - y_out_esn_red_p_lr[0, 50:, :])**2)
-mse_esn_org = np.mean((y_val[0, 50:, :] - y_esn_val[0, 50:, :])**2)
-print("mse_esn_small: ", mse_esn_small)
-print("mse_miniesn_bp: ", mse_miniesn_bp)
-print("mse_miniesn_lr: ", mse_miniesn_lr)
-print("mse_esn_org: ", mse_esn_org)
+# mse_esn_small = np.mean((y_val[0, 50:, :] - y_esn_small_val[0, 50:, :])**2)
+# mse_miniesn_bp = np.mean((y_val[0, 50:, :] - y_out_esn_red_p_bp[0, 50:, :])**2)
+# mse_miniesn_lr = np.mean((y_val[0, 50:, :] - y_out_esn_red_p_lr[0, 50:, :])**2)
+# mse_esn_org = np.mean((y_val[0, 50:, :] - y_esn_val[0, 50:, :])**2)
+# print("mse_esn_small: ", mse_esn_small)
+# print("mse_miniesn_bp: ", mse_miniesn_bp)
+# print("mse_miniesn_lr: ", mse_miniesn_lr)
+# print("mse_esn_org: ", mse_esn_org)
 
 ######################### plot the accuracy comparison results ##################################
 
@@ -228,10 +227,12 @@ o, = plt.plot(y_esn_val[0,:,out_plt_index], color="red", linestyle='solid')
 # r, = plt.plot(y_out_r[out_plt_index,:], color="magenta", linestyle='dotted')
 # n, = plt.plot(y_out_esn_red[0,:,out_plt_index], color="green", linestyle='dashed')
 e_lr, = plt.plot(y_out_esn_red_p_lr[0,:,out_plt_index], color="blue", linestyle='dashdot')
-e_bp, = plt.plot(y_out_esn_red_p_bp[0,:,out_plt_index], color="magenta", linestyle='dotted')
-s, = plt.plot(y_esn_small_val[0,:,out_plt_index], color="green", linestyle='dashed')
+e_E, = plt.plot(y_out_esn_red_random_E[0,:,out_plt_index], color="magenta", linestyle='dotted')
+e_all, = plt.plot(y_out_esn_red_random_all[0,:,out_plt_index], color="green", linestyle='dashed')
+# e_bp, = plt.plot(y_out_esn_red_p_bp[0,:,out_plt_index], color="magenta", linestyle='dotted')
+# s, = plt.plot(y_esn_small_val[0,:,out_plt_index], color="green", linestyle='dashed')
 plt.xlabel("Timesteps")
-plt.legend([t, o, e_lr, e_bp, s], ["target", "ESN org", "MiniESN with lr", "MiniESN with bp", "ESN small"])
+plt.legend([t, o, e_lr, e_E, e_all], ["target", "ESN org", "MiniESN with lr", "random E", "random all"])
 
 plt.figure()
 t, = plt.plot(y_val[0,:,out_plt_index], color="black")
@@ -242,5 +243,3 @@ plt.xlabel("Timesteps")
 plt.legend([t, o, r, d], ["target", "ESN org", "SS Approx", "Red from ESN"])
 
 plt.show()
-
-
