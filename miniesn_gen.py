@@ -13,7 +13,7 @@ def mor_esn(W, W_in, W_out, out_bias, sample_all, sample_step, order):
     W_in_r = U.T@W_in
     W_out_r = W_out@U
 
-    return W_r, W_in_r, W_out_r, U
+    return W_out_r, U
 
 def miniesn_gen(W, W_in, W_out, V, sample_all, sample_step, order_deim):
     samples = sample_all[:, 0::sample_step]

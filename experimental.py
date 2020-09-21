@@ -10,14 +10,14 @@ import miniesn_tools
 import tensorflow as tf
 
 ###################################### parameters ########################################
-data_select = 3 # can only be 1, 2, 3
-stime_train = 1000 # sample number for training
-stime_val = 100 # sample number for validation
+data_select = 1 # can only be 1, 2, 3
+stime_train = 10000 # sample number for training
+stime_val = 1000 # sample number for validation
 epochs = 200
 num_units = 200 # original ESN network hidden unit number
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
-sample_step = 1 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
+sample_step = 10 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
 order = 20 # reduced order
 leaky_ratio = 1 # leaky ratio of ESN
 connectivity_ratio = 1 # connectivity ratio of the ESN internal layer
@@ -68,16 +68,28 @@ model.add(recurrent_layer)
 model.add(output)
 model.summary()
 
-################## construct the MiniESN using the untrained original ESN model, then train the MiniESN #######################
-
 # extract the matrices before training, W_p, W_in_p, out_bias_p should be the same as W, W_in, out_bias later because they cannot be trained
 W_p, W_in_p, W_out_p, out_bias_p = miniesn_tools.esn_matrix_extract(model)
 
 # simulate the untrained state space ESN model, y_untrained_p is inaccurate (of course since ESN is untrained), but g_sample_all_p and x_sample_all_p can still be used to train and reduce ESN
 y_untrained_p, g_sample_all_p, x_sample_all_p = miniesn_tools.esn_ss_sim(W_p, W_in_p, W_out_p, out_bias_p, leaky_ratio, activation_fun, u_train)
 
+################## construct the saESN using the untrained original ESN model, then train the saESN #######################
+# perform MOR on ESN model
+W_out_sa, V_sa = miniesn_gen.mor_esn(W_p, W_in_p, W_out_p, out_bias_p, x_sample_all_p, sample_step, order)
+
+# simulate the untrained saESN model to generate training data
+y_untrained_sa, x_sample_train_sa = miniesn_tools.esn_red_sim(W_p, W_in_p, W_out_sa, out_bias_p, V_sa, leaky_ratio, activation_fun, u_train)
+# training using linear regression
+W_out_sa_lr = miniesn_tools.esn_train(x_sample_train_sa, y_train[0].T)
+
+# simulate the trained saESN model for verification
+y_sa, x_sample_sa = miniesn_tools.esn_red_sim(W_p, W_in_p, W_out_sa_lr, out_bias_p, V_sa, leaky_ratio, activation_fun, u_val)
+
+################## construct the MiniESN using the untrained original ESN model, then train the MiniESN #######################
+
 # perform MOR on the untrained ESN model
-W_r_p, W_in_r_p, W_out_r_p, V_p = miniesn_gen.mor_esn(W_p, W_in_p, W_out_p, out_bias_p, x_sample_all_p, sample_step, order)
+W_out_r_p, V_p = miniesn_gen.mor_esn(W_p, W_in_p, W_out_p, out_bias_p, x_sample_all_p, sample_step, order)
 
 # perform MOR with deim on the untrained ESN model
 W_deim_p, W_in_deim_p, E_deim_p, W_out_deim_p = miniesn_gen.miniesn_gen(W_p, W_in_p, W_out_p, V_p, g_sample_all_p, sample_step, order)
@@ -154,10 +166,10 @@ W, W_in, W_out, out_bias = miniesn_tools.esn_matrix_extract(model)
 y_out_train, g_sample_all, x_sample_all = miniesn_tools.esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_train)
 
 # perform MOR on ESN model
-W_r, W_in_r, W_out_r, V = miniesn_gen.mor_esn(W, W_in, W_out, out_bias, x_sample_all, sample_step, order)
+W_out_r, V = miniesn_gen.mor_esn(W, W_in, W_out, out_bias, x_sample_all, sample_step, order)
 
 # simulate the reduced ESN model without DEIM
-y_out_r = miniesn_tools.esn_red_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, activation_fun, u_val)
+y_out_r, x_samples_r = miniesn_tools.esn_red_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, activation_fun, u_val)
 
 # perform MOR with deim
 W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, V, g_sample_all, sample_step, order)
@@ -208,17 +220,16 @@ model_small = miniesn_tools.esn_assign(model_small, W_out_small)
 y_esn_small_val = model_small(u_val)
 
 ########################## compute the mse errors ############################
-# mse_esn_small = np.mean((y_val[0, 50:, :] - y_esn_small_val[0, 50:, :])**2)
-# mse_miniesn_bp = np.mean((y_val[0, 50:, :] - y_out_esn_red_p_bp[0, 50:, :])**2)
-# mse_miniesn_lr = np.mean((y_val[0, 50:, :] - y_out_esn_red_p_lr[0, 50:, :])**2)
-# mse_esn_org = np.mean((y_val[0, 50:, :] - y_esn_val[0, 50:, :])**2)
-# print("mse_esn_small: ", mse_esn_small)
-# print("mse_miniesn_bp: ", mse_miniesn_bp)
-# print("mse_miniesn_lr: ", mse_miniesn_lr)
-# print("mse_esn_org: ", mse_esn_org)
+mse_esn_small = np.mean((y_val[0, 50:, :] - y_esn_small_val[0, 50:, :])**2)
+mse_miniesn_lr = np.mean((y_val[0, 50:, :] - y_out_esn_red_p_lr[0, 50:, :])**2)
+mse_esn_org = np.mean((y_val[0, 50:, :] - y_esn_val[0, 50:, :])**2)
+mse_saESN = np.mean((y_val[0, 50:, :] - y_sa[:,50:].T)**2)
+print("mse_esn_small: ", mse_esn_small)
+print("mse_miniesn_lr: ", mse_miniesn_lr)
+print("mse_esn_org: ", mse_esn_org)
+print("mse_saESN: ", mse_saESN)
 
 ######################### plot the accuracy comparison results ##################################
-
 plt.figure()
 # i, = plt.plot(u_val[0], color="blue")
 t, = plt.plot(y_val[0,:,out_plt_index], color="black")
@@ -228,11 +239,12 @@ o, = plt.plot(y_esn_val[0,:,out_plt_index], color="red", linestyle='solid')
 # n, = plt.plot(y_out_esn_red[0,:,out_plt_index], color="green", linestyle='dashed')
 e_lr, = plt.plot(y_out_esn_red_p_lr[0,:,out_plt_index], color="blue", linestyle='dashdot')
 e_E, = plt.plot(y_out_esn_red_random_E[0,:,out_plt_index], color="magenta", linestyle='dotted')
-e_all, = plt.plot(y_out_esn_red_random_all[0,:,out_plt_index], color="green", linestyle='dashed')
+sa, = plt.plot(y_sa[out_plt_index, :], color="green", linestyle='dashed')
+# e_all, = plt.plot(y_out_esn_red_random_all[0,:,out_plt_index], color="green", linestyle='dashed')
 # e_bp, = plt.plot(y_out_esn_red_p_bp[0,:,out_plt_index], color="magenta", linestyle='dotted')
-# s, = plt.plot(y_esn_small_val[0,:,out_plt_index], color="green", linestyle='dashed')
+s, = plt.plot(y_esn_small_val[0,:,out_plt_index], color="yellow", linestyle='dotted')
 plt.xlabel("Timesteps")
-plt.legend([t, o, e_lr, e_E, e_all], ["target", "ESN org", "MiniESN with lr", "random E", "random all"])
+plt.legend([t, o, e_lr, e_E, sa, s], ["target", "ESN org", "MiniESN with lr", "random E", "saESN", "small"])
 
 plt.figure()
 t, = plt.plot(y_val[0,:,out_plt_index], color="black")

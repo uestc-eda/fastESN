@@ -45,7 +45,7 @@ def esn_red_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, activation_fun, inpu
     num_inputs = W_in.shape[1]
     x_pre_r = np.zeros((order,1)) # initiate state as zeros if esn model use default zero initial state
     y_out_r = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
-    # print("shape_inputs: ", inputs.shape)
+    x_sample_r_all = np.zeros((order, inputs.shape[1])) # store all the states, will be used as samples for training
     for i in range(inputs[0].shape[0]):
         if activation_fun == 'tanh':
             x_cur_r = (1-leaky_ratio)*x_pre_r + leaky_ratio*V.T@np.tanh(W@V@x_pre_r + W_in@tf.reshape(inputs[0,i,:],[num_inputs,1]))
@@ -53,9 +53,10 @@ def esn_red_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, activation_fun, inpu
             x_cur_r = (1-leaky_ratio)*x_pre_r + leaky_ratio*V.T@tf.nn.relu(W@V@x_pre_r + W_in@tf.reshape(inputs[0,i,:],[num_inputs,1]))
         else:
             raise Exception("activation function can only be tanh or relu")
+        x_sample_r_all[:,[i]] = x_cur_r # record current state in all state vector as samples for training
         y_out_r[:,[i]] = W_out_r @ x_cur_r + out_bias
         x_pre_r = x_cur_r
-    return y_out_r
+    return y_out_r, x_sample_r_all
 
 def esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, inputs):
     # simulate the reduced ESN model with DEIM

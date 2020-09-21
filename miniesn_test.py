@@ -77,7 +77,7 @@ W_p, W_in_p, W_out_p, out_bias_p = miniesn_tools.esn_matrix_extract(model)
 y_untrained_p, g_sample_all_p, x_sample_all_p = miniesn_tools.esn_ss_sim(W_p, W_in_p, W_out_p, out_bias_p, leaky_ratio, activation_fun, u_train)
 
 # perform MOR on the untrained ESN model
-W_r_p, W_in_r_p, W_out_r_p, V_p = miniesn_gen.mor_esn(W_p, W_in_p, W_out_p, out_bias_p, x_sample_all_p, sample_step, order)
+W_out_r_p, V_p = miniesn_gen.mor_esn(W_p, W_in_p, W_out_p, out_bias_p, x_sample_all_p, sample_step, order)
 
 # perform MOR with deim on the untrained ESN model
 W_deim_p, W_in_deim_p, E_deim_p, W_out_deim_p = miniesn_gen.miniesn_gen(W_p, W_in_p, W_out_p, V_p, g_sample_all_p, sample_step, order)
@@ -155,10 +155,10 @@ W, W_in, W_out, out_bias = miniesn_tools.esn_matrix_extract(model)
 y_out_train, g_sample_all, x_sample_all = miniesn_tools.esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_train)
 
 # perform MOR on ESN model
-W_r, W_in_r, W_out_r, V = miniesn_gen.mor_esn(W, W_in, W_out, out_bias, x_sample_all, sample_step, order)
+W_out_r, V = miniesn_gen.mor_esn(W, W_in, W_out, out_bias, x_sample_all, sample_step, order)
 
 # simulate the reduced ESN model without DEIM
-y_out_r = miniesn_tools.esn_red_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, activation_fun, u_val)
+y_out_r, x_sample_r = miniesn_tools.esn_red_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, activation_fun, u_val)
 
 # perform MOR with deim
 W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, V, g_sample_all, sample_step, order)
