@@ -16,7 +16,7 @@ num_units = 100 # original ESN network hidden unit number
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
 sample_step = 4 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
-order = 30 # reduced order
+order = 50 # reduced order
 leaky_ratio = 1 # leaky ratio of ESN
 connectivity_ratio = 1 # connectivity ratio of the ESN internal layer
 activation_fun = 'tanh' # can only be 'tanh' or 'relu'
@@ -164,7 +164,7 @@ y_out_r, x_sample_r = miniesn_tools.esn_red_sim(W, W_in, W_out_r, out_bias, V, l
 W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, V, g_sample_all, sample_step, order)
 
 # simulate the reduced ESN model with DEIM
-y_out_deim = miniesn_tools.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, u_val)
+y_out_deim, x_sample_deim = miniesn_tools.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, u_val)
 
 # generate the reduced ESN network and assign weights
 model_red = miniesn_tools.esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, stime_val)
@@ -240,6 +240,11 @@ d, = plt.plot(y_out_esn_red[0,:,out_plt_index], color="green", linestyle='dashed
 r, = plt.plot(y_out_r[out_plt_index, :], color="blue", linestyle='dotted')
 plt.xlabel("Timesteps")
 plt.legend([t, o, r, d], ["target", "ESN org", "SS Approx", "Red from ESN"])
+
+plt.figure()
+state, = plt.plot(x_sample_deim[1,:], color="black")
+plt.xlabel("Timesteps")
+plt.legend([state], ["state1"])
 
 plt.show()
 
