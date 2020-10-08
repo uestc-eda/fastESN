@@ -4,7 +4,7 @@ def mor_esn(W, W_in, W_out, out_bias, sample_all, sample_step, order):
     # sample_step = x_all.shape[1]//n_sample # integer floor division "//" to compute integer sample_step
     # print("x_all=", x_all)
     print("sample_step=", sample_step)
-    samples = sample_all[:, 0::sample_step]
+    samples = sample_all[:, 1::sample_step]
     # print("samples=", samples)
     U, S, V = np.linalg.svd(samples, full_matrices=False)
     U = U[:,0:order]
@@ -16,17 +16,36 @@ def mor_esn(W, W_in, W_out, out_bias, sample_all, sample_step, order):
     return W_out_r, U
 
 def miniesn_gen(W, W_in, W_out, V, sample_all, sample_step, order_deim):
-    samples = sample_all[:, 0::sample_step]
+    samples = sample_all[:, 1::sample_step]
     U, S, V_deim = np.linalg.svd(samples, full_matrices=False)
     U = U[:,0:order_deim]
 
     idx, P = deim_core(U)
+    # idx, P = greedy_core(U)
 
     W_deim = P.T@W@V
     W_in_deim = P.T@W_in
     E_deim = np.linalg.solve(U.T@P, U.T@V).T # in original math: E_deim = V.T@U@np.linalg.inv(P.T@U)
+    
+    # E_deim_norm = np.linalg.norm(E_deim, ord=2)
+    # print("E_deim_norm: ", E_deim_norm)
+    # PTU_norm = np.linalg.norm(P.T@U, ord=2)
+    # print("PTU_norm: ", PTU_norm)
+    # PTU_inv_norm = np.linalg.norm(np.linalg.inv(P.T@U), ord=2)
+    # print("PTU_inv_norm: ", PTU_inv_norm)
+    # VTU_norm = np.linalg.norm(V.T@U, ord=2)
+    # print("VTU_norm: ", VTU_norm)
+    # W_norm = np.linalg.norm(W, ord=2)
+    # print("W_norm: ", W_norm)
+    # W_deim_norm = np.linalg.norm(W_deim, ord=2)
+    # print("W_deim_norm: ", W_deim_norm)
+    # WV_norm = np.linalg.norm(W@V, ord=2)
+    # print("WV_norm: ", WV_norm)
+    
+    # E_deim = E_deim/E_deim_norm # normalize E_deim, to keep the echo property
     E_deim = E_deim.astype('float32') # convert to float to be compatible with tensorflow
     W_out_deim = W_out@V
+    # W_out_deim = E_deim_norm*W_out@V # E_deim_norm is multiplied here because E_deim is normalized
 
     return W_deim, W_in_deim, E_deim, W_out_deim
 
@@ -45,6 +64,8 @@ def deim_core(U):
 
     # tmp = P[:,0:1].T@U[:,0:1]
     # print("tmp=", tmp)
+
+    # print("U=", U)
     
     for i in range(1,order_deim): # loop start from the second index
         c = np.linalg.solve(P[:,0:i].T@U[:,0:i], P[:,0:i].T@U[:,i])
@@ -53,9 +74,15 @@ def deim_core(U):
         # print("res=",res)
         idx[i] = np.argmax(np.absolute(res))
         P[idx[i],i] = 1 # set the ith column of P
+        # PTU_inv = np.linalg.inv(P[:,0:i].T@U[:,0:i])
+        # print("PTU_inv=", PTU_inv)
+        # PTU_inv_norm = np.linalg.norm(PTU_inv, ord=2)
+        # print("PTU_inv_norm: ", PTU_inv_norm)
+        
         # c_after = np.linalg.solve(P[:,0:i+1].T@U[:,0:i+1], P[:,0:i+1].T@U[:,i])
         # res_after = U[:,i] - U[:,0:i+1]@c_after
         # print("res_after=",res_after)
+        
     # c = np.linalg.solve(P[:,0:order_deim].T@U[:,0:order_deim], P[:,0:order_deim].T@U[:,order_deim-1])
     # res = U[:,order_deim-1] - U[:,0:order_deim]@c
     # print("res=",res)
@@ -64,3 +91,24 @@ def deim_core(U):
     # print("idx=", idx)
     return idx, P
 
+def greedy_core(U):
+    n = U.shape[0] # original model order
+    order = U.shape[1] # reduced model greedy order
+    # U_out = np.zeros([n, order_deim])
+
+    P = np.zeros((n, order)) # initiate P matrix
+    # idx = np.zeros(order, dtype=int) # initial index vector
+    row_norm = np.zeros(n) # initiate the vector to store the 1 norm each row (abs sum)
+
+    # loop all rows to find the 1 norm of each row
+    for i in range(0, n):
+        row_norm[i] = np.linalg.norm(U[i,:], ord=1)
+    idx = np.argsort(-1*row_norm) # find the index, first idx corresponds to the largest value
+
+    print("row_norm=", row_norm)
+    print("idx=", idx)
+
+    for i in range(0, order):
+        P[idx[i],i] = 1 # set P
+        
+    return idx, P
