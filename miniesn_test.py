@@ -16,7 +16,7 @@ num_units = 100 # original ESN network hidden unit number
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
 sample_step = 4 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
-order = 50 # reduced order
+order = 60 # reduced order
 leaky_ratio = 1 # leaky ratio of ESN
 connectivity_ratio = 1 # connectivity ratio of the ESN internal layer
 activation_fun = 'tanh' # can only be 'tanh' or 'relu'
@@ -170,7 +170,13 @@ y_out_deim, x_sample_deim = miniesn_tools.esn_deim_sim(E_deim, W_deim, W_in_deim
 model_red = miniesn_tools.esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, stime_val)
 
 # simulate the reduced ESN network
-y_out_esn_red = model_red(u_val) 
+y_out_esn_red = model_red(u_val)
+
+# perform MOR with stable deim
+W_deim_stable, W_in_deim_stable, E_deim_stable, E_lin_stable, W_out_deim_stable = miniesn_gen.miniesn_stable(W, W_in, W_out, V, g_sample_all, sample_step, order)
+
+# simulate the reduced ESN model with stable DEIM
+y_out_deim_stable, x_sample_deim_stable = miniesn_tools.esn_deim_stable_sim(E_deim_stable, E_lin_stable, W_deim_stable, W_in_deim_stable, W_out_deim_stable, out_bias, leaky_ratio, activation_fun, u_val)
 
 ############### construct an ESN with the same size of MiniESN, for accuracy comparison #################
 recurrent_layer_small = tfa.layers.ESN(units=order, leaky=leaky_ratio, activation=activation_fun, connectivity=connectivity_ratio, input_shape=(stime_train, num_inputs), return_sequences=True, use_bias=False, name="nn")
@@ -238,8 +244,9 @@ t, = plt.plot(y_val[0,:,out_plt_index], color="black")
 o, = plt.plot(y_esn_val[0,:,out_plt_index], color="red", linestyle='solid')
 d, = plt.plot(y_out_esn_red[0,:,out_plt_index], color="green", linestyle='dashed')
 r, = plt.plot(y_out_r[out_plt_index, :], color="blue", linestyle='dotted')
+st, = plt.plot(y_out_deim_stable[out_plt_index, :], color="magenta", linestyle='dashdot')
 plt.xlabel("Timesteps")
-plt.legend([t, o, r, d], ["target", "ESN org", "SS Approx", "Red from ESN"])
+plt.legend([t, o, r, d, st], ["target", "ESN org", "SS Approx", "Red from ESN", "stable"])
 
 plt.figure()
 state, = plt.plot(x_sample_deim[1,:], color="black")

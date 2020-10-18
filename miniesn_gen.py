@@ -112,3 +112,45 @@ def greedy_core(U):
         P[idx[i],i] = 1 # set P
         
     return idx, P
+
+# def stable_V(samples, W):
+#     n_s = samples.shape[1] # number of samples
+#     max_lamda = np.zeros(n_s) # store the largest real eigen value of jacobian at each sample
+#     for i in range(0, n_s):
+#         J = jacobian(samples[:,i], W) # jacobian at each sample
+#         max_lamda[i] = np.linalg.eigvals(J).real.max # the largest real eigen value
+#         idx = np.argsort(max_lamda) 
+#         W_descend = W[:,idx[::-1]] # permute W according to the sorted max_lamda, [::-1] changes the acending to decending
+
+def miniesn_stable(W, W_in, W_out, V, sample_all, sample_step, order_deim):
+    samples = sample_all[:, 1::sample_step] - W@sample_all[:, 0:-1:sample_step]
+    U, S, V_deim = np.linalg.svd(samples, full_matrices=False)
+    U = U[:,0:order_deim]
+
+    idx, P = deim_core(U)
+    # idx, P = greedy_core(U)
+
+    W_deim = P.T@W@V
+    W_in_deim = P.T@W_in
+    E_deim = np.linalg.solve(U.T@P, U.T@V).T # in original math: E_deim = V.T@U@np.linalg.inv(P.T@U)
+    E_lin = V.T@W@V-E_deim@P.T@W@V
+    
+    # E_deim = E_deim/E_deim_norm # normalize E_deim, to keep the echo property
+    E_deim = E_deim.astype('float32') # convert to float to be compatible with tensorflow
+    # E_lin = E_lin.astype('float32')
+    W_out_deim = W_out@V
+    # W_out_deim = E_deim_norm*W_out@V # E_deim_norm is multiplied here because E_deim is normalized
+
+    return W_deim, W_in_deim, E_deim, E_lin, W_out_deim
+
+# compute the jacobian matrix at x
+def jacobian(x, W):
+    n = W.shape[0] # original model order
+    diag_mat = np.zeros((n, n))
+
+    for i in range(0,n):
+        diag_mat[i,i] = 1-np.tanh(W[i,:]@x)**2
+
+    J = diag_mat@W
+
+    return J

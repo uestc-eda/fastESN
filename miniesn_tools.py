@@ -85,6 +85,26 @@ def esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, a
         x_pre_deim = x_cur_deim
     return y_out_deim, x_sample_deim_all
 
+def esn_deim_stable_sim(E_deim, E_lin, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, inputs):
+    # simulate the reduced ESN model with DEIM
+    print("** simulating the stable DEIM reduced model...")
+    order = W_deim.shape[0]
+    num_outputs = W_out_deim.shape[0]
+    num_inputs = W_in_deim.shape[1]
+    x_pre_deim = np.zeros((order,1)) # initiate state as zeros if esn model use default zero initial state
+    y_out_deim = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
+    x_sample_deim_all = np.zeros((order, inputs.shape[1])) # store all the states, will be used as samples for training
+    for i in range(inputs[0].shape[0]):
+        if activation_fun == 'tanh':
+            x_cur_deim = (1-leaky_ratio)*x_pre_deim + leaky_ratio*(E_lin@x_pre_deim + E_deim@np.tanh(W_deim@x_pre_deim + W_in_deim@tf.reshape(inputs[0,i,:],[num_inputs,1])))
+        elif activation_fun == 'relu':
+            x_cur_deim = (1-leaky_ratio)*x_pre_deim + leaky_ratio*(E_lin@x_pre_deim + E_deim@tf.nn.relu(W_deim@x_pre_deim + W_in_deim@tf.reshape(inputs[0,i,:],[num_inputs,1])))
+        else:
+            raise Exception("activation function can only be tanh or relu")
+        y_out_deim[:,[i]] = W_out_deim @ x_cur_deim + out_bias
+        x_pre_deim = x_cur_deim
+    return y_out_deim, x_sample_deim_all
+
 def esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, stime):
     # create reduced ESN network and assign weights
     print("** creating reduced ESN network and assigning weights...")
