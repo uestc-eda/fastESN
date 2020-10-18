@@ -21,21 +21,25 @@ def esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, inputs):
     num_inputs = W_in.shape[1]
     x_pre = np.zeros((num_units,1)) # initiate state as zeros if esn model use default zero initial state
     g_sample_all = np.zeros((num_units, inputs.shape[1])) # store all the activation function (function g() in paper) values, will be used as samples for MOR
+    g_sample_stable_all = np.zeros((num_units, inputs.shape[1])) # store all the activation function (function g() in paper) values, will be used as samples for stable MOR
     x_sample_all = np.zeros((num_units, inputs.shape[1])) # store all the states, will be used as samples for training and MOR
     y_out = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
     for i in range(inputs[0].shape[0]):
         if activation_fun == 'tanh':
             g_sample = leaky_ratio*np.tanh(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[num_inputs,1]))
+            g_sample_stable = leaky_ratio*(np.tanh(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[num_inputs,1]))-W@x_pre)
         elif activation_fun == 'relu':
             g_sample = leaky_ratio*tf.nn.relu(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[num_inputs,1]))
+            g_sample_stable = leaky_ratio*(np.relu(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[num_inputs,1]))-W@x_pre)
         else:
             raise Exception("activation function can only be tanh or relu")
         x_cur = (1-leaky_ratio)*x_pre + g_sample
         y_out[:,[i]] = W_out @ x_cur + out_bias
         g_sample_all[:,[i]] = g_sample # record current activation function (function g() in paper) values as samples for MOR later
+        g_sample_stable_all[:,[i]] = g_sample_stable # record current activation function (function g() in paper) values as samples for stable MOR later
         x_sample_all[:,[i]] = x_cur # record current state in all state vector as samples for training and MOR
         x_pre = x_cur
-    return y_out, g_sample_all, x_sample_all
+    return y_out, g_sample_all, g_sample_stable_all, x_sample_all
 
 def esn_red_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, activation_fun, inputs):
     # simulate the reduced ESN state space model without DEIM

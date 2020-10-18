@@ -123,7 +123,7 @@ def greedy_core(U):
 #         W_descend = W[:,idx[::-1]] # permute W according to the sorted max_lamda, [::-1] changes the acending to decending
 
 def miniesn_stable(W, W_in, W_out, V, sample_all, sample_step, order_deim):
-    samples = sample_all[:, 1::sample_step] - W@sample_all[:, 0:-1:sample_step]
+    samples = sample_all[:, 1::sample_step]
     U, S, V_deim = np.linalg.svd(samples, full_matrices=False)
     U = U[:,0:order_deim]
 
