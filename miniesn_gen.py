@@ -45,7 +45,7 @@ def miniesn_gen(W, W_in, W_out, V, sample_all, sample_step, order_deim):
     # E_deim = E_deim/E_deim_norm # normalize E_deim, to keep the echo property
     E_deim = E_deim.astype('float32') # convert to float to be compatible with tensorflow
     W_out_deim = W_out@V
-    W_out_deim = W_out_deim.astype('float32') # convert to float to be compatible with tensorflow
+    # W_out_deim = W_out_deim.astype('float32') # convert to float to be compatible with tensorflow
     # W_out_deim = E_deim_norm*W_out@V # E_deim_norm is multiplied here because E_deim is normalized
 
     return W_deim, W_in_deim, E_deim, W_out_deim

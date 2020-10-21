@@ -125,6 +125,7 @@ def esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio
     model_red.layers[0].weights[0].assign(tf.transpose(W_deim))
     model_red.layers[0].weights[1].assign(tf.transpose(W_in_deim))
     model_red.layers[0].weights[2].assign(tf.transpose(E_deim))
+    W_out_deim = W_out_deim.astype('float32')
     model_red.layers[1].weights[0].assign(tf.transpose(W_out_deim))
     out_bias = tf.reshape(out_bias, [num_outputs])
     model_red.layers[1].weights[1].assign(tf.transpose(out_bias))
@@ -139,11 +140,12 @@ def esn_train(x_all, y_train):
     # print("x_all: ", x_all)
     # print("x_all@x_all.T: ", x_all@(x_all.T))
     W_out = np.linalg.solve(x_all@(x_all.T),x_all@(y_train.T)).T
-    W_out = W_out.astype('float32') # convert to float to be compatible with tensorflow
+    # W_out = W_out.astype('float32') # convert to float to be compatible with tensorflow
     # W_out = np.linalg.solve(x_all.T,y_train.T).T
     return W_out
 
 def esn_assign(model, W_out):
     print("** assigning the trained weights to ESN...")
+    W_out = W_out.astype('float32')
     model.layers[1].weights[0].assign(tf.transpose(W_out))
     return model
