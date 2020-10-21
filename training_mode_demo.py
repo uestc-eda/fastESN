@@ -8,16 +8,16 @@ import miniesn_tools
 import tensorflow as tf
 
 ###################################### parameters ########################################
-data_select = 3 # can only be 1, 2, 3
-stime_train = 1000 # sample number for training
+data_select = 1 # can only be 1, 2, 3
+stime_train = 5000 # sample number for training
 stime_val = 200 # sample number for validation
 epochs = 200
-num_units = 100 # original ESN network hidden unit number
+num_units = 500 # original ESN network hidden unit number
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
 sample_step = 4 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
-order = 60 # reduced order
-leaky_ratio = 0.5 # leaky ratio of ESN
+order = 20 # reduced order
+leaky_ratio = 1 # leaky ratio of ESN
 connectivity_ratio = 1 # connectivity ratio of the ESN internal layer
 activation_fun = 'tanh' # can only be 'tanh' or 'relu'
 
@@ -82,18 +82,18 @@ W_out_r, V = miniesn_gen.state_approx(W, W_in, W_out, out_bias, x_sample_all, sa
 # perform MOR with deim on the untrained ESN model
 W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, V, g_sample_all, sample_step, order)
 
-# train MiniESN using standard linear regression
+# train miniESN using standard linear regression
 # first, simulate MiniESN using training input to obtain the state samples for training (x_sample_deim_all_train), the output y_untrained_deim will not be used because it is inaccurate
 y_untrained_deim, x_sample_deim_all_train = miniesn_tools.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, u_train)
 # training using linear regression
 W_out_deim_lr = miniesn_tools.esn_train(x_sample_deim_all_train, y_train[0].T)
 
-# generate MiniESN and assign weights
+# generate miniESN and assign weights
 model_red_lr = miniesn_tools.esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim_lr, out_bias, leaky_ratio, activation_fun, stime_train)
 
 y_out_esn_red_lr = model_red_lr(u_val)
 
-############### construct the stable MiniESN using the untrained original ESN model ###############
+############### construct the stable miniESN using the untrained original ESN model ###############
 
 # perform stable DEIM to get the stable miniESN
 W_deim_stable, W_in_deim_stable, E_deim_stable, E_lin_stable, W_out_deim_stable = miniesn_gen.miniesn_stable(W, W_in, W_out, V, g_sample_stable_all, sample_step, order)
@@ -164,14 +164,8 @@ print("mse_miniesn: ", mse_miniesn)
 ######################### plot the accuracy comparison results ##################################
 
 plt.figure()
-# i, = plt.plot(u_val[0], color="blue")
 t, = plt.plot(y_val[0,:,out_plt_index], color="black")
 o, = plt.plot(y_esn_val[0,:,out_plt_index], color="blue", linestyle='dotted')
-# m, = plt.plot(y_out[out_plt_index,:], color="yellow", linestyle='dashed')
-# r, = plt.plot(y_out_r[out_plt_index,:], color="magenta", linestyle='dotted')
-# n, = plt.plot(y_out_esn_red[0,:,out_plt_index], color="green", linestyle='dashed')
-# e_lr, = plt.plot(y_out_esn_red_p_lr[0,:,out_plt_index], color="blue", linestyle='dashdot')
-# e_bp, = plt.plot(y_out_esn_red_p_bp[0,:,out_plt_index], color="magenta", linestyle='dotted')
 st, = plt.plot(y_out_miniesn_stable[out_plt_index, :], color="red", linestyle='dashdot')
 s, = plt.plot(y_esn_small_val[0,:,out_plt_index], color="green", linestyle='dashed')
 plt.xlabel("Timesteps")

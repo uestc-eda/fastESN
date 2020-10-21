@@ -105,6 +105,7 @@ def esn_deim_stable_sim(E_deim, E_lin, W_deim, W_in_deim, W_out_deim, out_bias, 
             x_cur_deim = (1-leaky_ratio)*x_pre_deim + leaky_ratio*(E_lin@x_pre_deim + E_deim@tf.nn.relu(W_deim@x_pre_deim + W_in_deim@tf.reshape(inputs[0,i,:],[num_inputs,1])))
         else:
             raise Exception("activation function can only be tanh or relu")
+        x_sample_deim_all[:,[i]] = x_cur_deim # record current state in all state vector as samples for training
         y_out_deim[:,[i]] = W_out_deim @ x_cur_deim + out_bias
         x_pre_deim = x_cur_deim
     return y_out_deim, x_sample_deim_all
