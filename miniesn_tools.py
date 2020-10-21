@@ -41,7 +41,7 @@ def esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, inputs):
         x_pre = x_cur
     return y_out, g_sample_all, g_sample_stable_all, x_sample_all
 
-def esn_red_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, activation_fun, inputs):
+def state_approx_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, activation_fun, inputs):
     # simulate the reduced ESN state space model without DEIM
     print("** simulating the reduced model...")
     order = V.shape[1]
