@@ -20,6 +20,7 @@ order = 20 # reduced order
 leaky_ratio = 1 # leaky ratio of ESN
 connectivity_ratio = 1 # connectivity ratio of the ESN internal layer
 activation_fun = 'tanh' # can only be 'tanh' or 'relu'
+washout_end = 50 # the end point of the "washout" region in time series data
 
 ######################## generate data for training and validation ###############################
 if data_select == 1:
@@ -77,16 +78,16 @@ y_untrained, g_sample_all, g_sample_stable_all, x_sample_all = miniesn_tools.esn
 ########### construct the MiniESN without stabilization using the untrained original ESN model ##########
 
 # perform MOR on the untrained ESN model
-W_out_r, V = miniesn_gen.state_approx(W, W_in, W_out, out_bias, x_sample_all, sample_step, order)
+W_out_r, V = miniesn_gen.state_approx(W, W_in, W_out, out_bias, x_sample_all[:,washout_end:], sample_step, order)
 
 # perform MOR with deim on the untrained ESN model
-W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, V, g_sample_all, sample_step, order)
+W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, V, g_sample_all[:,washout_end:], sample_step, order)
 
 # train miniESN using standard linear regression
 # first, simulate MiniESN using training input to obtain the state samples for training (x_sample_deim_all_train), the output y_untrained_deim will not be used because it is inaccurate
 y_untrained_deim, x_sample_deim_all_train = miniesn_tools.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, u_train)
 # training using linear regression
-W_out_deim_lr = miniesn_tools.esn_train(x_sample_deim_all_train, y_train[0].T)
+W_out_deim_lr = miniesn_tools.esn_train(x_sample_deim_all_train[:,washout_end:], y_train[0].T[:,washout_end:])
 
 # generate miniESN and assign weights
 model_red_lr = miniesn_tools.esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim_lr, out_bias, leaky_ratio, activation_fun, stime_train)
@@ -96,19 +97,19 @@ y_out_esn_red_lr = model_red_lr(u_val)
 ############### construct the stable miniESN using the untrained original ESN model ###############
 
 # perform stable DEIM to get the stable miniESN
-W_deim_stable, W_in_deim_stable, E_deim_stable, E_lin_stable, W_out_deim_stable = miniesn_gen.miniesn_stable(W, W_in, W_out, V, g_sample_stable_all, sample_step, order)
+W_deim_stable, W_in_deim_stable, E_deim_stable, E_lin_stable, W_out_deim_stable = miniesn_gen.miniesn_stable(W, W_in, W_out, V, g_sample_stable_all[:,washout_end:], sample_step, order)
 
 # train the stable miniESN 
 # simulate the stable miniESN using training input to obtain the state samples for training (x_sample_deim_stable_all_train), the output y_untrained_deim_stable will not be used because it is inaccurate
 y_untrained_deim_stable, x_sample_deim_stable_all_train = miniesn_tools.esn_deim_stable_sim(E_deim_stable, E_lin_stable, W_deim_stable, W_in_deim_stable, W_out_deim_stable, out_bias, leaky_ratio, activation_fun, u_train)
 # training using linear regression
-W_out_deim_stable_lr = miniesn_tools.esn_train(x_sample_deim_stable_all_train, y_train[0].T)
+W_out_deim_stable_lr = miniesn_tools.esn_train(x_sample_deim_stable_all_train[:,washout_end:], y_train[0].T[:,washout_end:])
 
 y_out_miniesn_stable, x_sample_deim_stable_tmp = miniesn_tools.esn_deim_stable_sim(E_deim_stable, E_lin_stable, W_deim_stable, W_in_deim_stable, W_out_deim_stable_lr, out_bias, leaky_ratio, activation_fun, u_val)
 
 ###################################### train the original ESN ######################################
 # linear regression based training
-W_out = miniesn_tools.esn_train(x_sample_all, y_train[0].T)
+W_out = miniesn_tools.esn_train(x_sample_all[:,washout_end:], y_train[0].T[:,washout_end:])
 
 # assign the trained W_out back to ESN
 model = miniesn_tools.esn_assign(model, W_out)
@@ -137,7 +138,7 @@ W_small, W_in_small, W_out_small, out_bias_small = miniesn_tools.esn_matrix_extr
 # simulate the untrained state space ESN model, y_out_p_small is inaccurate (of course since ESN is untrained), but x_sample_all_p_small can still be used to train ESN
 y_untrained_small, g_sample_all_small, g_sample_stable_all_small, x_sample_all_small = miniesn_tools.esn_ss_sim(W_small, W_in_small, W_out_small, out_bias_small, leaky_ratio, activation_fun, u_train)
 
-W_out_small = miniesn_tools.esn_train(x_sample_all_small, y_train[0].T)
+W_out_small = miniesn_tools.esn_train(x_sample_all_small[:,washout_end:], y_train[0].T[:,washout_end:])
 
 model_small = miniesn_tools.esn_assign(model_small, W_out_small)
 
@@ -154,9 +155,9 @@ model_small = miniesn_tools.esn_assign(model_small, W_out_small)
 y_esn_small_val = model_small(u_val)
 
 ########################## compute the mse errors ############################
-mse_esn_org = np.mean((y_val[0, 50:, :] - y_esn_val[0, 50:, :])**2)
-mse_esn_small = np.mean((y_val[0, 50:, :] - y_esn_small_val[0, 50:, :])**2)
-mse_miniesn = np.mean((y_val[0, 50:, :] - y_out_miniesn_stable[:,50:].T)**2)
+mse_esn_org = np.mean((y_val[0, washout_end:, :] - y_esn_val[0, washout_end:, :])**2)
+mse_esn_small = np.mean((y_val[0, washout_end:, :] - y_esn_small_val[0, washout_end:, :])**2)
+mse_miniesn = np.mean((y_val[0, washout_end:, :] - y_out_miniesn_stable[:,washout_end:].T)**2)
 print("mse_esn_org: ", mse_esn_org)
 print("mse_esn_small: ", mse_esn_small)
 print("mse_miniesn: ", mse_miniesn)

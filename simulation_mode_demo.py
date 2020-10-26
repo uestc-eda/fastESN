@@ -16,10 +16,11 @@ num_units = 200 # original ESN network hidden unit number
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
 sample_step = 4 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
-order = 50 # reduced order
+order = 20 # reduced order
 leaky_ratio = 1 # leaky ratio of ESN
-connectivity_ratio = 1 # connectivity ratio of the ESN internal layer
+connectivity_ratio = 0.1 # connectivity ratio of the ESN internal layer
 activation_fun = 'tanh' # can only be 'tanh' or 'relu'
+washout_end = 50 # the end point of the "washout" region in time series data
 
 ######################## generate data for training and validation ###############################
 if data_select == 1:
@@ -77,7 +78,7 @@ W, W_in, W_out, out_bias = miniesn_tools.esn_matrix_extract(model)
 y_out_train, g_sample_all, g_sample_stable_all, x_sample_all = miniesn_tools.esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_train)
 
 # train the original ESN
-W_out = miniesn_tools.esn_train(x_sample_all, y_train[0].T)
+W_out = miniesn_tools.esn_train(x_sample_all[:,washout_end:], y_train[0].T[:,washout_end:])
 
 # assign the trained W_out back to ESN
 model = miniesn_tools.esn_assign(model, W_out)
@@ -88,13 +89,13 @@ y_esn_val = model(u_val)
 ########## construct MiniESN using the trained ESN for simulation #######################
 
 # perform state approximation on ESN model
-W_out_r, V = miniesn_gen.state_approx(W, W_in, W_out, out_bias, x_sample_all, sample_step, order)
+W_out_r, V = miniesn_gen.state_approx(W, W_in, W_out, out_bias, x_sample_all[:,washout_end:], sample_step, order)
 
 # simulate the state approximate ESN without DEIM
 y_out_sa, x_sample_sa = miniesn_tools.state_approx_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, activation_fun, u_val)
 
 # further perform DEIM to obtain miniESN without stabilization, this model is for demonstration ONLY
-W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, V, g_sample_all, sample_step, order)
+W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, V, g_sample_all[:,washout_end:], sample_step, order)
 
 # simulate miniESN with DEIM using state space model, for demonstration ONLY
 y_out_deim, x_sample_deim = miniesn_tools.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, u_val)
@@ -106,16 +107,16 @@ miniesn_unstable = miniesn_tools.esn_deim_assign(E_deim, W_deim, W_in_deim, W_ou
 y_out_miniesn_unstable = miniesn_unstable(u_val)
 
 # perform stable DEIM to get the stable miniESN
-W_deim_stable, W_in_deim_stable, E_deim_stable, E_lin_stable, W_out_deim_stable = miniesn_gen.miniesn_stable(W, W_in, W_out, V, g_sample_stable_all, sample_step, order)
+W_deim_stable, W_in_deim_stable, E_deim_stable, E_lin_stable, W_out_deim_stable = miniesn_gen.miniesn_stable(W, W_in, W_out, V, g_sample_stable_all[:,washout_end:], sample_step, order)
 
 # simulate the stable miniESN using state space model
 y_out_deim_stable, x_sample_deim_stable = miniesn_tools.esn_deim_stable_sim(E_deim_stable, E_lin_stable, W_deim_stable, W_in_deim_stable, W_out_deim_stable, out_bias, leaky_ratio, activation_fun, u_val)
 
 ########################## compute the mse errors ############################
-mse_esn_org = np.mean((y_val[0, 50:, :] - y_esn_val[0, 50:, :])**2)
-mse_ss_approx = np.mean((y_val[0, 50:, :] - y_out_sa[:,50:].T)**2)
-mse_miniesn_unstable = np.mean((y_val[0, 50:, :] - y_out_miniesn_unstable[0, 50:, :])**2)
-mse_miniesn = np.mean((y_val[0, 50:, :] - y_out_deim_stable[:,50:].T)**2)
+mse_esn_org = np.mean((y_val[0, washout_end:, :] - y_esn_val[0, washout_end:, :])**2)
+mse_ss_approx = np.mean((y_val[0, washout_end:, :] - y_out_sa[:,washout_end:].T)**2)
+mse_miniesn_unstable = np.mean((y_val[0, washout_end:, :] - y_out_miniesn_unstable[0, washout_end:, :])**2)
+mse_miniesn = np.mean((y_val[0, washout_end:, :] - y_out_deim_stable[:,washout_end:].T)**2)
 print("mse_esn_org: ", mse_esn_org)
 print("mse_ss_approx: ", mse_ss_approx)
 print("mse_miniesn_unstable: ", mse_miniesn_unstable)
