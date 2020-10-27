@@ -8,17 +8,17 @@ import miniesn_tools
 import tensorflow as tf
 
 ###################################### parameters ########################################
-data_select = 1 # can only be 1, 2, 3
-stime_train = 1000 # sample number for training
-stime_val = 200 # sample number for validation
+data_select = 2 # can only be 1, 2, 3
+stime_train = 10000 # sample number for training
+stime_val = 500 # sample number for validation
 epochs = 200
 num_units = 200 # original ESN network hidden unit number
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
-sample_step = 4 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
-order = 20 # reduced order
+sample_step = 2 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
+order = 15 # reduced order
 leaky_ratio = 1 # leaky ratio of ESN
-connectivity_ratio = 0.1 # connectivity ratio of the ESN internal layer
+connectivity_ratio = 0.5 # connectivity ratio of the ESN internal layer
 activation_fun = 'tanh' # can only be 'tanh' or 'relu'
 washout_end = 50 # the end point of the "washout" region in time series data
 

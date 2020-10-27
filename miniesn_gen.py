@@ -16,7 +16,7 @@ def state_approx(W, W_in, W_out, out_bias, sample_all, sample_step, order):
     return W_out_r, U
 
 def miniesn_gen(W, W_in, W_out, V, sample_all, sample_step, order_deim):
-    samples = sample_all[:, 1::sample_step]
+    samples = sample_all[:, 1+sample_step//2::sample_step] # sample_step//2 is added to make the samples different from the ones used for the right projection matrix
     U, S, V_deim = np.linalg.svd(samples, full_matrices=False)
     U = U[:,0:order_deim]
 
