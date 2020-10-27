@@ -12,11 +12,11 @@ data_select = 2 # can only be 1, 2, 3
 stime_train = 10000 # sample number for training
 stime_val = 500 # sample number for validation
 epochs = 200
-num_units = 200 # original ESN network hidden unit number
+num_units = 100 # original ESN network hidden unit number
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
-sample_step = 2 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
-order = 15 # reduced order
+sample_step = 4 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
+order = 10 # reduced order
 leaky_ratio = 1 # leaky ratio of ESN
 connectivity_ratio = 0.5 # connectivity ratio of the ESN internal layer
 activation_fun = 'tanh' # can only be 'tanh' or 'relu'
@@ -89,13 +89,13 @@ y_esn_val = model(u_val)
 ########## construct MiniESN using the trained ESN for simulation #######################
 
 # perform state approximation on ESN model
-W_out_r, V = miniesn_gen.state_approx(W, W_in, W_out, out_bias, x_sample_all[:,washout_end:], sample_step, order)
+W_out_r, V_left, V_right = miniesn_gen.state_approx(W, W_in, W_out, out_bias, x_sample_all[:,washout_end:], sample_step, order)
 
 # simulate the state approximate ESN without DEIM
-y_out_sa, x_sample_sa = miniesn_tools.state_approx_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, activation_fun, u_val)
+y_out_sa, x_sample_sa = miniesn_tools.state_approx_sim(W, W_in, W_out_r, out_bias, V_left, V_right, leaky_ratio, activation_fun, u_val)
 
 # further perform DEIM to obtain miniESN without stabilization, this model is for demonstration ONLY
-W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, V, g_sample_all[:,washout_end:], sample_step, order)
+W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, V_left, V_right, g_sample_all[:,washout_end:], sample_step, order)
 
 # simulate miniESN with DEIM using state space model, for demonstration ONLY
 y_out_deim, x_sample_deim = miniesn_tools.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, u_val)
@@ -107,7 +107,7 @@ miniesn_unstable = miniesn_tools.esn_deim_assign(E_deim, W_deim, W_in_deim, W_ou
 y_out_miniesn_unstable = miniesn_unstable(u_val)
 
 # perform stable DEIM to get the stable miniESN
-W_deim_stable, W_in_deim_stable, E_deim_stable, E_lin_stable, W_out_deim_stable = miniesn_gen.miniesn_stable(W, W_in, W_out, V, g_sample_stable_all[:,washout_end:], sample_step, order)
+W_deim_stable, W_in_deim_stable, E_deim_stable, E_lin_stable, W_out_deim_stable = miniesn_gen.miniesn_stable(W, W_in, W_out, V_left, V_right, g_sample_stable_all[:,washout_end:], sample_step, order)
 
 # simulate the stable miniESN using state space model
 y_out_deim_stable, x_sample_deim_stable = miniesn_tools.esn_deim_stable_sim(E_deim_stable, E_lin_stable, W_deim_stable, W_in_deim_stable, W_out_deim_stable, out_bias, leaky_ratio, activation_fun, u_val)

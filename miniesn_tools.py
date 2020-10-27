@@ -41,10 +41,10 @@ def esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, inputs):
         x_pre = x_cur
     return y_out, g_sample_all, g_sample_stable_all, x_sample_all
 
-def state_approx_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, activation_fun, inputs):
+def state_approx_sim(W, W_in, W_out_r, out_bias, V_left, V_right, leaky_ratio, activation_fun, inputs):
     # simulate the reduced ESN state space model without DEIM
     print("** simulating the reduced model...")
-    order = V.shape[1]
+    order = V_right.shape[1]
     num_outputs = W_out_r.shape[0]
     num_inputs = W_in.shape[1]
     x_pre_r = np.zeros((order,1)) # initiate state as zeros if esn model use default zero initial state
@@ -52,9 +52,9 @@ def state_approx_sim(W, W_in, W_out_r, out_bias, V, leaky_ratio, activation_fun,
     x_sample_r_all = np.zeros((order, inputs.shape[1])) # store all the states, will be used as samples for training
     for i in range(inputs[0].shape[0]):
         if activation_fun == 'tanh':
-            x_cur_r = (1-leaky_ratio)*x_pre_r + leaky_ratio*V.T@np.tanh(W@V@x_pre_r + W_in@tf.reshape(inputs[0,i,:],[num_inputs,1]))
+            x_cur_r = (1-leaky_ratio)*x_pre_r + leaky_ratio*V_left.T@np.tanh(W@V_right@x_pre_r + W_in@tf.reshape(inputs[0,i,:],[num_inputs,1]))
         elif activation_fun == 'relu':
-            x_cur_r = (1-leaky_ratio)*x_pre_r + leaky_ratio*V.T@tf.nn.relu(W@V@x_pre_r + W_in@tf.reshape(inputs[0,i,:],[num_inputs,1]))
+            x_cur_r = (1-leaky_ratio)*x_pre_r + leaky_ratio*V_left.T@tf.nn.relu(W@V_right@x_pre_r + W_in@tf.reshape(inputs[0,i,:],[num_inputs,1]))
         else:
             raise Exception("activation function can only be tanh or relu")
         x_sample_r_all[:,[i]] = x_cur_r # record current state in all state vector as samples for training

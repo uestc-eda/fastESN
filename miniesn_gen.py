@@ -5,27 +5,27 @@ def state_approx(W, W_in, W_out, out_bias, sample_all, sample_step, order):
     # print("x_all=", x_all)
     print("sample_step=", sample_step)
     samples = sample_all[:, 1::sample_step]
-    # print("samples=", samples)
-    U, S, V = np.linalg.svd(samples, full_matrices=False)
-    U = U[:,0:order]
 
-    W_r = U.T@W@U
-    W_in_r = U.T@W_in
-    W_out_r = W_out@U
+    U_right, S_right, V_right = np.linalg.svd(samples, full_matrices=False)
+    U_right = U_right[:,0:order]
 
-    return W_out_r, U
+    U_left = U_right # we use U_left as U_right, they can be different but more problematic
 
-def miniesn_gen(W, W_in, W_out, V, sample_all, sample_step, order_deim):
-    samples = sample_all[:, 1+sample_step//2::sample_step] # sample_step//2 is added to make the samples different from the ones used for the right projection matrix
+    W_out_r = W_out@U_right
+
+    return W_out_r, U_left, U_right
+
+def miniesn_gen(W, W_in, W_out, V_left, V_right, sample_all, sample_step, order_deim):
+    samples = sample_all[:, 1::sample_step]
     U, S, V_deim = np.linalg.svd(samples, full_matrices=False)
     U = U[:,0:order_deim]
 
     idx, P = deim_core(U)
     # idx, P = greedy_core(U)
 
-    W_deim = P.T@W@V
+    W_deim = P.T@W@V_right
     W_in_deim = P.T@W_in
-    E_deim = np.linalg.solve(U.T@P, U.T@V).T # in original math: E_deim = V.T@U@np.linalg.inv(P.T@U)
+    E_deim = np.linalg.solve(U.T@P, U.T@V_left).T # in original math: E_deim = V_left.T@U@np.linalg.inv(P.T@U)
     
     # E_deim_norm = np.linalg.norm(E_deim, ord=2)
     # print("E_deim_norm: ", E_deim_norm)
@@ -44,7 +44,7 @@ def miniesn_gen(W, W_in, W_out, V, sample_all, sample_step, order_deim):
     
     # E_deim = E_deim/E_deim_norm # normalize E_deim, to keep the echo property
     E_deim = E_deim.astype('float32') # convert to float to be compatible with tensorflow
-    W_out_deim = W_out@V
+    W_out_deim = W_out@V_right
     # W_out_deim = W_out_deim.astype('float32') # convert to float to be compatible with tensorflow
     # W_out_deim = E_deim_norm*W_out@V # E_deim_norm is multiplied here because E_deim is normalized
 
@@ -92,66 +92,34 @@ def deim_core(U):
     # print("idx=", idx)
     return idx, P
 
-def greedy_core(U):
-    n = U.shape[0] # original model order
-    order = U.shape[1] # reduced model greedy order
-    # U_out = np.zeros([n, order_deim])
-
-    P = np.zeros((n, order)) # initiate P matrix
-    # idx = np.zeros(order, dtype=int) # initial index vector
-    row_norm = np.zeros(n) # initiate the vector to store the 1 norm each row (abs sum)
-
-    # loop all rows to find the 1 norm of each row
-    for i in range(0, n):
-        row_norm[i] = np.linalg.norm(U[i,:], ord=1)
-    idx = np.argsort(-1*row_norm) # find the index, first idx corresponds to the largest value
-
-    print("row_norm=", row_norm)
-    print("idx=", idx)
-
-    for i in range(0, order):
-        P[idx[i],i] = 1 # set P
-        
-    return idx, P
-
-# def stable_V(samples, W):
-#     n_s = samples.shape[1] # number of samples
-#     max_lamda = np.zeros(n_s) # store the largest real eigen value of jacobian at each sample
-#     for i in range(0, n_s):
-#         J = jacobian(samples[:,i], W) # jacobian at each sample
-#         max_lamda[i] = np.linalg.eigvals(J).real.max # the largest real eigen value
-#         idx = np.argsort(max_lamda) 
-#         W_descend = W[:,idx[::-1]] # permute W according to the sorted max_lamda, [::-1] changes the acending to decending
-
-def miniesn_stable(W, W_in, W_out, V, sample_all, sample_step, order_deim):
+def miniesn_stable(W, W_in, W_out, V_left, V_right, sample_all, sample_step, order_deim):
     samples = sample_all[:, 1::sample_step]
     U, S, V_deim = np.linalg.svd(samples, full_matrices=False)
     U = U[:,0:order_deim]
 
+    # # use qr to orthogonolize U and V against each other
+    # UV = np.concatenate((U, V), axis=1)
+    # print("UV_shape: ", UV.shape)
+    # UV, R = np.linalg.qr(UV, mode='reduced') # R will not be used
+    # print("UV_orth_shape: ", UV.shape)
+    # U = UV[:,:order_deim]
+    # V = UV[:,order_deim:]
+    # print("U_shape: ", U.shape)
+    # print("V_shape: ", V.shape)
+
     idx, P = deim_core(U)
     # idx, P = greedy_core(U)
 
-    W_deim = P.T@W@V
+    W_deim = P.T@W@V_right
     W_in_deim = P.T@W_in
-    E_deim = np.linalg.solve(U.T@P, U.T@V).T # in original math: E_deim = V.T@U@np.linalg.inv(P.T@U)
-    E_lin = V.T@W@V-E_deim@P.T@W@V
+    E_deim = np.linalg.solve(U.T@P, U.T@V_left).T # in original math: E_deim = V_left.T@U@np.linalg.inv(P.T@U)
+    E_lin = V_left.T@W@V_right-E_deim@P.T@W@V_right
     
     # E_deim = E_deim/E_deim_norm # normalize E_deim, to keep the echo property
     E_deim = E_deim.astype('float32') # convert to float to be compatible with tensorflow
     # E_lin = E_lin.astype('float32')
-    W_out_deim = W_out@V
+    W_out_deim = W_out@V_right
     # W_out_deim = E_deim_norm*W_out@V # E_deim_norm is multiplied here because E_deim is normalized
 
     return W_deim, W_in_deim, E_deim, E_lin, W_out_deim
 
-# compute the jacobian matrix at x
-def jacobian(x, W):
-    n = W.shape[0] # original model order
-    diag_mat = np.zeros((n, n))
-
-    for i in range(0,n):
-        diag_mat[i,i] = 1-np.tanh(W[i,:]@x)**2
-
-    J = diag_mat@W
-
-    return J
