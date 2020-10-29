@@ -8,32 +8,35 @@ import miniesn_tools
 import tensorflow as tf
 
 ###################################### parameters ########################################
-data_select = 2 # can only be 1, 2, 3
+data_select = 4 # can only be 1, 2, 3, 4
 stime_train = 10000 # sample number for training
 stime_val = 500 # sample number for validation
 epochs = 200
-num_units = 100 # original ESN network hidden unit number
+num_units = 5 # original ESN network hidden unit number
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
 sample_step = 4 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
-order = 10 # reduced order
+order = 3 # reduced order
 leaky_ratio = 1 # leaky ratio of ESN
 connectivity_ratio = 0.5 # connectivity ratio of the ESN internal layer
 activation_fun = 'tanh' # can only be 'tanh' or 'relu'
 washout_end = 50 # the end point of the "washout" region in time series data
 
 ######################## generate data for training and validation ###############################
-if data_select == 1:
+if data_select == 1: # narma 10
     y_train, u_train = data_generate.narma_10_gen(stime_train)
     y_val, u_val = data_generate.narma_10_gen(stime_val)
-elif data_select == 2:
+elif data_select == 2: # narma 30
     y_train, u_train = data_generate.narma_30_gen(stime_train)
     y_val, u_val = data_generate.narma_30_gen(stime_val)
-elif data_select == 3:
+elif data_select == 3: # two-in-two-out dynamic system
     y_train, u_train = data_generate.two_in_two_out(stime_train)
     y_val, u_val = data_generate.two_in_two_out(stime_val)
+elif data_select == 4: # a second order problem
+    y_train, u_train = data_generate.second_order_problem(stime_train)
+    y_val, u_val = data_generate.second_order_problem(stime_val)
 else:
-    raise Exception("narma_order can only be 10 or 30 in this code")
+    raise Exception("data type can only be 1, 2, 3, 4 in this code")
 
 num_inputs = u_train.shape[0]
 num_outputs = y_train.shape[0]

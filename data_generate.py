@@ -45,3 +45,16 @@ def two_in_two_out(n_t):
     y = y.astype('float32') # convert to float32 to be compatible with keras
     u = u.astype('float32')
     return y, u
+
+def second_order_problem(n_t):
+    y = np.zeros(n_t+2) # initiate the output data
+    u = 0.5*np.random.rand(n_t+1) # input data randomly sampled in [0, 0.5)
+    for t in range(1,n_t+1):
+        y[t+1] = y[t]*y[t-1]*(y[t]+0.25)/(1+y[t]**2+y[t-1]**2) + u[t]
+    y = y[1:-1] # discard the first element because it is zero to initiate the time series, discard the last element to agree with inputs
+    u = u[1:] # discard the first element to agree with the output time
+    y = y.astype('float32') # convert to float32 to be compatible with keras
+    u = u.astype('float32')
+    y = y.reshape(1,-1)
+    u = u.reshape(1,-1)
+    return y, u
