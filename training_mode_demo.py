@@ -78,10 +78,10 @@ y_untrained, g_sample_all, g_sample_stable_all, x_sample_all = miniesn_tools.esn
 ########### construct the MiniESN without stabilization using the untrained original ESN model ##########
 
 # perform MOR on the untrained ESN model
-W_out_r, V = miniesn_gen.state_approx(W, W_in, W_out, out_bias, x_sample_all[:,washout_end:], sample_step, order)
+W_out_r, V_left, V_right = miniesn_gen.state_approx(W, W_in, W_out, out_bias, x_sample_all[:,washout_end:], sample_step, order)
 
 # perform MOR with deim on the untrained ESN model
-W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, V, g_sample_all[:,washout_end:], sample_step, order)
+W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, V_left, V_right, g_sample_all[:,washout_end:], sample_step, order)
 
 # train miniESN using standard linear regression
 # first, simulate MiniESN using training input to obtain the state samples for training (x_sample_deim_all_train), the output y_untrained_deim will not be used because it is inaccurate
@@ -97,7 +97,7 @@ y_out_esn_red_lr = model_red_lr(u_val)
 ############### construct the stable miniESN using the untrained original ESN model ###############
 
 # perform stable DEIM to get the stable miniESN
-W_deim_stable, W_in_deim_stable, E_deim_stable, E_lin_stable, W_out_deim_stable = miniesn_gen.miniesn_stable(W, W_in, W_out, V, g_sample_stable_all[:,washout_end:], sample_step, order)
+W_deim_stable, W_in_deim_stable, E_deim_stable, E_lin_stable, W_out_deim_stable = miniesn_gen.miniesn_stable(W, W_in, W_out, V_left, V_right, g_sample_stable_all[:,washout_end:], sample_step, order)
 
 # train the stable miniESN 
 # simulate the stable miniESN using training input to obtain the state samples for training (x_sample_deim_stable_all_train), the output y_untrained_deim_stable will not be used because it is inaccurate
