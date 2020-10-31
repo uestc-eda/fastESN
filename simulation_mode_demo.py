@@ -104,7 +104,7 @@ W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, 
 y_out_deim, x_sample_deim = miniesn_tools.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, u_val)
 
 # generate miniESN without stablization and assign weights, this network is for demonstration ONLY
-miniesn_unstable = miniesn_tools.esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, stime_val)
+miniesn_unstable = miniesn_tools.miniesn_unstable_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, stime_val)
 
 # simulate miniESN without stabilization
 y_out_miniesn_unstable = miniesn_unstable(u_val)
@@ -114,6 +114,12 @@ W_deim_stable, W_in_deim_stable, E_deim_stable, E_lin_stable, W_out_deim_stable 
 
 # simulate the stable miniESN using state space model
 y_out_deim_stable, x_sample_deim_stable = miniesn_tools.esn_deim_stable_sim(E_deim_stable, E_lin_stable, W_deim_stable, W_in_deim_stable, W_out_deim_stable, out_bias, leaky_ratio, activation_fun, u_val)
+
+# generate stable miniESN and assign weights
+miniesn_stable = miniesn_tools.miniesn_stable_assign(E_deim_stable, W_deim_stable, W_in_deim_stable, W_out_deim_stable, E_lin_stable, out_bias, leaky_ratio, activation_fun, stime_val)
+
+# simulate the stable miniESN
+y_out_miniesn_stable = miniesn_stable(u_val)
 
 ########################## compute the mse errors ############################
 mse_esn_org = np.mean((y_val[0, washout_end:, :] - y_esn_val[0, washout_end:, :])**2)
@@ -138,8 +144,9 @@ t, = plt.plot(y_val[0,:,out_plt_index], color="black")
 o, = plt.plot(y_esn_val[0,:,out_plt_index], color="blue", linestyle='dotted')
 r, = plt.plot(y_out_sa[out_plt_index, :], color="green", linestyle='dashed')
 st, = plt.plot(y_out_deim_stable[out_plt_index, :], color="red", linestyle='dashdot')
+me, = plt.plot(y_out_miniesn_stable[0,:,out_plt_index], color="magenta", linestyle='dotted')
 plt.xlabel("Timesteps")
-plt.legend([t, o, r, st], ["Target", "ESN org", "State approx", "miniESN"])
+plt.legend([t, o, r, st, me], ["Target", "ESN org", "State approx", "miniESN ss", "miniESN"])
 
 plt.figure()
 state, = plt.plot(x_sample_deim[1,:], color="black")

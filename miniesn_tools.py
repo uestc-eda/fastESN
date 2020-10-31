@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
-from esn_red import MiniESN
+from esn_red import miniESN_unstable, miniESN_stable
 
 def esn_matrix_extract(model):
     # this function extracts the matrices of an ESN network
@@ -110,27 +110,50 @@ def esn_deim_stable_sim(E_deim, E_lin, W_deim, W_in_deim, W_out_deim, out_bias, 
         x_pre_deim = x_cur_deim
     return y_out_deim, x_sample_deim_all
 
-def esn_deim_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, stime):
+def miniesn_unstable_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, stime):
     # create reduced ESN network and assign weights
-    print("** creating reduced ESN network and assigning weights...")
+    print("** creating reduced ESN network without stablization and assigning weights...")
     order = W_deim.shape[0]
     num_inputs = W_in_deim.shape[1]
     num_outputs = W_out_deim.shape[0]
-    recurrent_layer_red =  MiniESN(units=order, leaky=leaky_ratio, activation=activation_fun, connectivity=1, input_shape=(stime, num_inputs), return_sequences=True, use_bias=False, name="nn")
-    output_red = keras.layers.Dense(num_outputs, name="readouts")
+    recurrent_layer_miniesn_unstable =  miniESN_unstable(units=order, leaky=leaky_ratio, activation=activation_fun, connectivity=1, input_shape=(stime, num_inputs), return_sequences=True, use_bias=False, name="nn")
+    output_miniesn_unstable = keras.layers.Dense(num_outputs, name="readouts")
     # put all together in a keras sequential model
-    model_red = keras.models.Sequential()
-    model_red.add(recurrent_layer_red)
-    model_red.add(output_red)
-    model_red.summary()
-    model_red.layers[0].weights[0].assign(tf.transpose(W_deim))
-    model_red.layers[0].weights[1].assign(tf.transpose(W_in_deim))
-    model_red.layers[0].weights[2].assign(tf.transpose(E_deim))
+    miniesn_unstable = keras.models.Sequential()
+    miniesn_unstable.add(recurrent_layer_miniesn_unstable)
+    miniesn_unstable.add(output_miniesn_unstable)
+    miniesn_unstable.summary()
+    miniesn_unstable.layers[0].weights[0].assign(tf.transpose(W_deim))
+    miniesn_unstable.layers[0].weights[1].assign(tf.transpose(W_in_deim))
+    miniesn_unstable.layers[0].weights[2].assign(tf.transpose(E_deim))
     W_out_deim = W_out_deim.astype('float32')
-    model_red.layers[1].weights[0].assign(tf.transpose(W_out_deim))
+    miniesn_unstable.layers[1].weights[0].assign(tf.transpose(W_out_deim))
     out_bias = tf.reshape(out_bias, [num_outputs])
-    model_red.layers[1].weights[1].assign(tf.transpose(out_bias))
-    return model_red
+    miniesn_unstable.layers[1].weights[1].assign(tf.transpose(out_bias))
+    return miniesn_unstable
+
+def miniesn_stable_assign(E_deim_stable, W_deim_stable, W_in_deim_stable, W_out_deim_stable, E_lin_stable, out_bias, leaky_ratio, activation_fun, stime):
+    # create reduced ESN network and assign weights
+    print("** creating reduced ESN network without stablization and assigning weights...")
+    order = W_deim_stable.shape[0]
+    num_inputs = W_in_deim_stable.shape[1]
+    num_outputs = W_out_deim_stable.shape[0]
+    recurrent_layer_miniesn_stable =  miniESN_stable(units=order, leaky=leaky_ratio, activation=activation_fun, connectivity=1, input_shape=(stime, num_inputs), return_sequences=True, use_bias=False, name="nn")
+    output_miniesn_stable = keras.layers.Dense(num_outputs, name="readouts")
+    # put all together in a keras sequential model
+    miniesn_stable = keras.models.Sequential()
+    miniesn_stable.add(recurrent_layer_miniesn_stable)
+    miniesn_stable.add(output_miniesn_stable)
+    miniesn_stable.summary()
+    miniesn_stable.layers[0].weights[0].assign(tf.transpose(W_deim_stable))
+    miniesn_stable.layers[0].weights[1].assign(tf.transpose(W_in_deim_stable))
+    miniesn_stable.layers[0].weights[2].assign(tf.transpose(E_deim_stable))
+    miniesn_stable.layers[0].weights[3].assign(tf.transpose(E_lin_stable))
+    W_out_deim_stable = W_out_deim_stable.astype('float32')
+    miniesn_stable.layers[1].weights[0].assign(tf.transpose(W_out_deim_stable))
+    out_bias = tf.reshape(out_bias, [num_outputs])
+    miniesn_stable.layers[1].weights[1].assign(tf.transpose(out_bias))
+    return miniesn_stable
 
 def esn_train(x_all, y_train):
     # num_outputs = W_out.shape[0]
