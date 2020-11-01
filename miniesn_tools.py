@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
 from esn_red import miniESN_unstable, miniESN_stable
+import time
 
 def esn_matrix_extract(model):
     # this function extracts the matrices of an ESN network
@@ -65,28 +66,39 @@ def state_approx_sim(W, W_in, W_out_r, out_bias, V_left, V_right, leaky_ratio, a
 def esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, inputs):
     # simulate the reduced ESN model with DEIM
     print("** simulating the DEIM reduced model...")
+    
+    t_unstable_before_start = time.process_time_ns()
     order = W_deim.shape[0]
     num_outputs = W_out_deim.shape[0]
     num_inputs = W_in_deim.shape[1]
     x_pre_deim = np.zeros((order,1)) # initiate state as zeros if esn model use default zero initial state
     y_out_deim = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
     x_sample_deim_all = np.zeros((order, inputs.shape[1])) # store all the states, will be used as samples for training
+    t_unstable_before = time.process_time_ns() - t_unstable_before_start
+    print("t_unstable_before: ", t_unstable_before)
+    
     for i in range(inputs[0].shape[0]):
+        # t_unstable_loop_start = time.process_time_ns()
         if activation_fun == 'tanh':
             x_cur_deim = (1-leaky_ratio)*x_pre_deim + leaky_ratio*E_deim@np.tanh(W_deim@x_pre_deim + W_in_deim@tf.reshape(inputs[0,i,:],[num_inputs,1]))
         elif activation_fun == 'relu':
             x_cur_deim = (1-leaky_ratio)*x_pre_deim + leaky_ratio*E_deim@tf.nn.relu(W_deim@x_pre_deim + W_in_deim@tf.reshape(inputs[0,i,:],[num_inputs,1]))
         else:
             raise Exception("activation function can only be tanh or relu")
+        # t_unstable_loop = time.process_time_ns() - t_unstable_loop_start
+        # print("t_unstable_loop: ", t_unstable_loop)
         # if i < 4:
         #     print("first: ",W_deim@x_pre_deim)
         #     print("second: ",W_in_deim@tf.reshape(inputs[0,i,:],[num_inputs,1]))
         #     print("first+second: ",W_deim@x_pre_deim+W_in_deim@tf.reshape(inputs[0,i,:],[num_inputs,1]))
         #     print("tan(first+second): ",np.tanh(W_deim@x_pre_deim+W_in_deim@tf.reshape(inputs[0,i,:],[num_inputs,1])))
         #     print("Etan(first+second): ",E_deim@np.tanh(W_deim@x_pre_deim+W_in_deim@tf.reshape(inputs[0,i,:],[num_inputs,1])))
+        # t_unstable_after_start = time.process_time_ns()
         x_sample_deim_all[:,[i]] = x_cur_deim # record current state in all state vector as samples for training
         y_out_deim[:,[i]] = W_out_deim @ x_cur_deim + out_bias
         x_pre_deim = x_cur_deim
+        # t_unstable_after = time.process_time_ns() - t_unstable_after_start
+        # print("t_unstable_after: ", t_unstable_after)
     return y_out_deim, x_sample_deim_all
 
 def esn_deim_stable_sim(E_deim, E_lin, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, inputs):

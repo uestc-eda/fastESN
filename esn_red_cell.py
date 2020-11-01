@@ -370,7 +370,10 @@ class miniESN_stable_Cell(keras.layers.AbstractRNNCell):
         # print("output_shape: ", output.shape)
         # print("kernel_extra shape: ", self.kernel_extra.shape)
         # output = self.activation(output)
-        output = tf.linalg.matmul(state[0], self.kernel_linear) + tf.linalg.matmul(self.activation(output), self.kernel_extra)
+        first_matrix = tf.concat([self.activation(output), state[0]], axis=1)
+        second_matrix = tf.concat([self.kernel_extra, self.kernel_linear], axis=0)
+        output = tf.linalg.matmul(first_matrix, second_matrix)
+        # output = tf.linalg.matmul(state[0], self.kernel_linear) + tf.linalg.matmul(self.activation(output), self.kernel_extra)
         # print("output_after_shape: ", output.shape)
         output = (1 - self.leaky) * state[0] + self.leaky * output
 
