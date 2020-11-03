@@ -10,7 +10,7 @@ import numpy as np
 import time
 
 # mat_size_set = list(range(10, 100, 10))
-mat_size_set = [10, 1000]
+mat_size_set = [2, 10, 50, 90, 100, 1000]
 
 for i in range(0, len(mat_size_set)):
     mat_size = mat_size_set[i]

@@ -17,6 +17,7 @@
 import tensorflow as tf
 import tensorflow.keras as keras
 from typeguard import typechecked
+import time
 
 from tensorflow_addons.utils.types import (
     Activation,
@@ -360,23 +361,33 @@ class miniESN_stable_Cell(keras.layers.AbstractRNNCell):
         self.built = True
 
     def call(self, inputs, state):
+        # ts = time.perf_counter_ns()
         in_matrix = tf.concat([inputs, state[0]], axis=1)
         weights_matrix = tf.concat([self.kernel, self.recurrent_kernel], axis=0)
         # print("in_matrix shape ", in_matrix.shape)
         # print("weights_matrix shape ", weights_matrix.shape)
         output = tf.linalg.matmul(in_matrix, weights_matrix)
+        # t_mul1 = time.perf_counter_ns() - ts
+        # print("t_mul1: ", t_mul1)
         if self.use_bias:
             output = output + self.bias
         # print("output_shape: ", output.shape)
         # print("kernel_extra shape: ", self.kernel_extra.shape)
         # output = self.activation(output)
+        # ts = time.perf_counter_ns()
         first_matrix = tf.concat([self.activation(output), state[0]], axis=1)
         second_matrix = tf.concat([self.kernel_extra, self.kernel_linear], axis=0)
         output = tf.linalg.matmul(first_matrix, second_matrix)
+        # t_mul2 = time.perf_counter_ns() - ts
+        # print("t_mul2: ", t_mul2)
+        
+        # ts = time.perf_counter_ns()
         # output = tf.linalg.matmul(state[0], self.kernel_linear) + tf.linalg.matmul(self.activation(output), self.kernel_extra)
         # print("output_after_shape: ", output.shape)
         output = (1 - self.leaky) * state[0] + self.leaky * output
-
+        # t_mul3 = time.perf_counter_ns() - ts
+        # print("t_mul3: ", t_mul3)
+        
         return output, output
 
     def get_config(self):

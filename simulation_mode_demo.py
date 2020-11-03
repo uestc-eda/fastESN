@@ -78,7 +78,7 @@ model.summary()
 W, W_in, W_out, out_bias = miniesn_tools.esn_matrix_extract(model)
 
 # simulate the state space ESN model with training data to generate samples
-y_out_train, g_sample_all, g_sample_stable_all, x_sample_all = miniesn_tools.esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_train)
+g_sample_all, g_sample_stable_all, x_sample_all = miniesn_tools.esn_sample_gen(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_train)
 
 # train the original ESN
 W_out = miniesn_tools.esn_train(x_sample_all[:,washout_end:], y_train[0].T[:,washout_end:])
@@ -95,7 +95,8 @@ y_esn_val = model(u_val)
 W_out_r, V_left, V_right = miniesn_gen.state_approx(W, W_in, W_out, out_bias, x_sample_all[:,washout_end:], sample_step, order)
 
 # simulate the state approximate ESN without DEIM
-y_out_sa, x_sample_sa = miniesn_tools.state_approx_sim(W, W_in, W_out_r, out_bias, V_left, V_right, leaky_ratio, activation_fun, u_val)
+W_V_right = W@V_right
+y_out_sa = miniesn_tools.state_approx_sim(W_V_right, W_in, W_out_r, out_bias, V_left, leaky_ratio, activation_fun, u_val)
 
 # further perform DEIM to obtain miniESN without stabilization, this model is for demonstration ONLY
 W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, V_left, V_right, g_sample_all[:,washout_end:], sample_step, order)
