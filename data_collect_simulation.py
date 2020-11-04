@@ -123,7 +123,11 @@ for num_units_idx in range(0, len(num_units_set)):
 
             # extract the ESN model in state space form
             W, W_in, W_out, out_bias = miniesn_tools.esn_matrix_extract(model)
-
+            W = W.numpy()
+            W_in = W_in.numpy()
+            W_out = W_out.numpy()
+            out_bias = out_bias.numpy()
+            
             # simulate the state space ESN model with training data to generate samples
             g_sample_all, g_sample_stable_all, x_sample_all = miniesn_tools.esn_sample_gen(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_train)
 
