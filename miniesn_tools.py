@@ -46,6 +46,7 @@ def esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, inputs):
     num_outputs = W_out.shape[0]
     num_inputs = W_in.shape[1]
     x_pre = np.zeros((num_units,1)) # initiate state as zeros if esn model use default zero initial state
+    # x_pre = np.zeros((num_units,1)) # initiate state as zeros if esn model use default zero initial state
     y_out = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
     for i in range(inputs[0].shape[0]):
         if activation_fun == 'tanh':
@@ -57,6 +58,7 @@ def esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, inputs):
         x_cur = (1-leaky_ratio)*x_pre + g_sample
         y_out[:,[i]] = W_out @ x_cur + out_bias
         x_pre = x_cur
+    print("g_sample_type: ", g_sample.dtype)
     return y_out
 
 def state_approx_sim(W_V_right, W_in, W_out_r, out_bias, V_left, leaky_ratio, activation_fun, inputs):

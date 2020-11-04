@@ -27,3 +27,20 @@ for i in range(0, len(mat_size_set)):
     print("mat_size: ", mat_size)
     print("mul_time: ", mul_time)
     
+for i in range(0, len(mat_size_set)):
+    mat_size = mat_size_set[i]
+    A = np.random.rand(mat_size, mat_size)
+    B = np.random.rand(mat_size, 1)
+    C = np.zeros((mat_size, 1))
+    A = A.astype('float32')
+    B = B.astype('float32')
+    C = C.astype('float32')
+    # t = time.process_time()
+    t = time.perf_counter()
+    for j in range(0, 10000):
+        C = A@B
+    # C = A@B
+    # mul_time = time.process_time() - t
+    mul_time = time.perf_counter() - t
+    print("mat_size: ", mat_size)
+    print("mul_time: ", mul_time)

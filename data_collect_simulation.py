@@ -1,10 +1,10 @@
-import os
-os.environ.update(
-    OMP_NUM_THREADS = '1',
-    OPENBLAS_NUM_THREADS = '1'
-    # NUMEXPR_NUM_THREADS = '1'
-    # MKL_NUM_THREADS = '1'
-)
+# import os
+# os.environ.update(
+#     OMP_NUM_THREADS = '1',
+#     OPENBLAS_NUM_THREADS = '1'
+#     # NUMEXPR_NUM_THREADS = '1'
+#     # MKL_NUM_THREADS = '1'
+# )
 
 import numpy as np
 import data_generate
@@ -30,8 +30,8 @@ leaky_ratio = 1 # leaky ratio of ESN
 connectivity_ratio = 1 # connectivity ratio of the ESN internal layer
 activation_fun = 'tanh' # can only be 'tanh' or 'relu'
 washout_end = 50 # the end point of the "washout" region in time series data
-num_units_set = [1000] # original ESN network hidden unit number
-order_set = [2] # reduced order
+num_units_set = [100, 1000] # original ESN network hidden unit number
+order_set = [10, 100] # reduced order
 num_test = 1 # number of test for each num_units-order combination
 
 mset_esn_org = np.zeros((len(num_units_set), len(order_set)))
@@ -127,13 +127,19 @@ for num_units_idx in range(0, len(num_units_set)):
             W_in = W_in.numpy()
             W_out = W_out.numpy()
             out_bias = out_bias.numpy()
+            W = W.astype('float64')
+            W_in = W_in.astype('float64')
+            W_out = W_out.astype('float64')
+            out_bias = out_bias.astype('float64')
+            
             
             # simulate the state space ESN model with training data to generate samples
             g_sample_all, g_sample_stable_all, x_sample_all = miniesn_tools.esn_sample_gen(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_train)
 
             # train the original ESN
             W_out = miniesn_tools.esn_train(x_sample_all[:,washout_end:], y_train[0].T[:,washout_end:])
-
+            # W_out = W_out.astype('float32')
+            
             # assign the trained W_out back to ESN
             # model = miniesn_tools.esn_assign(model, W_out)
 
@@ -201,6 +207,10 @@ for num_units_idx in range(0, len(num_units_set)):
             mseo_miniesn_unstable_tests[test_idx] = np.mean((y_esn_val[:,washout_end:].T - y_out_deim[:,washout_end:].T)**2)
             mseo_miniesn_tests[test_idx] = np.mean((y_esn_val[:,washout_end:].T - y_out_miniesn_stable[:,washout_end:].T)**2)
 
+        print("y_esn_val_type: ", y_esn_val.dtype)
+        print("y_out_sa_type: ", y_out_sa.dtype)
+        print("y_out_deim_type: ", y_out_deim.dtype)
+        print("y_out_miniesn_stable_type: ", y_out_miniesn_stable.dtype)
         # print(runtime_esn_org_tests)
         # print(runtime_ss_approx_tests)
         # print(runtime_esn_org_tests)

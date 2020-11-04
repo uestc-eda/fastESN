@@ -9,8 +9,8 @@ def narma_30_gen(n_t):
     y = y[30:-1] # truncate the first 30 data because they are zeros to initiate the time series, also ignore the last element to agree with the inputs
     u = u[30:] # truncate the first 30 data
     # print("y = ", y)
-    y = y.astype('float32') # convert to float32 to be compatible with keras
-    u = u.astype('float32')
+    # y = y.astype('float32') # convert to float32 to be compatible with keras
+    # u = u.astype('float32')
     y = y.reshape(1,-1)
     u = u.reshape(1,-1)
     return y, u
@@ -24,8 +24,8 @@ def narma_10_gen(n_t):
     y = y[10:-1] # truncate the first 10 data because they are zeros to initiate the time series, also ignore the last element to agree with the inputs
     u = u[10:] # truncate the first 10 data
     # print("y = ", y)
-    y = y.astype('float32') # convert to float32 to be compatible with keras
-    u = u.astype('float32')
+    # y = y.astype('float32') # convert to float32 to be compatible with keras
+    # u = u.astype('float32')
     y = y.reshape(1,-1)
     u = u.reshape(1,-1)
     return y, u
@@ -42,8 +42,8 @@ def two_in_two_out(n_t):
         y[0,t] = 0.7*(x[0,t] + x[1,t])
         y[1,t] = 1.5*(x[0,t]**2)
     y = y[:, :-1] # truncate the last data to agree with the inputs
-    y = y.astype('float32') # convert to float32 to be compatible with keras
-    u = u.astype('float32')
+    # y = y.astype('float32') # convert to float32 to be compatible with keras
+    # u = u.astype('float32')
     return y, u
 
 def second_order_problem(n_t):
@@ -53,8 +53,8 @@ def second_order_problem(n_t):
         y[t+1] = y[t]*y[t-1]*(y[t]+0.25)/(1+y[t]**2+y[t-1]**2) + u[t]
     y = y[1:-1] # discard the first element because it is zero to initiate the time series, discard the last element to agree with inputs
     u = u[1:] # discard the first element to agree with the output time
-    y = y.astype('float32') # convert to float32 to be compatible with keras
-    u = u.astype('float32')
+    # y = y.astype('float32') # convert to float32 to be compatible with keras
+    # u = u.astype('float32')
     y = y.reshape(1,-1)
     u = u.reshape(1,-1)
     return y, u

@@ -43,7 +43,7 @@ def miniesn_gen(W, W_in, W_out, V_left, V_right, sample_all, sample_step, order_
     # print("WV_norm: ", WV_norm)
     
     # E_deim = E_deim/E_deim_norm # normalize E_deim, to keep the echo property
-    E_deim = E_deim.astype('float32') # convert to float to be compatible with tensorflow
+    # E_deim = E_deim.astype('float32') # convert to float to be compatible with tensorflow
     W_out_deim = W_out@V_right
     # W_out_deim = W_out_deim.astype('float32') # convert to float to be compatible with tensorflow
     # W_out_deim = E_deim_norm*W_out@V # E_deim_norm is multiplied here because E_deim is normalized
@@ -116,7 +116,7 @@ def miniesn_stable(W, W_in, W_out, V_left, V_right, sample_all, sample_step, ord
     E_lin = V_left.T@W@V_right-E_deim@P.T@W@V_right
     
     # E_deim = E_deim/E_deim_norm # normalize E_deim, to keep the echo property
-    E_deim = E_deim.astype('float32') # convert to float to be compatible with tensorflow
+    # E_deim = E_deim.astype('float32') # convert to float to be compatible with tensorflow
     # E_lin = E_lin.astype('float32')
     W_out_deim = W_out@V_right
     # W_out_deim = E_deim_norm*W_out@V # E_deim_norm is multiplied here because E_deim is normalized
