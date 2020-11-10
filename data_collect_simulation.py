@@ -1,10 +1,10 @@
-# import os
-# os.environ.update(
-#     OMP_NUM_THREADS = '1',
-#     OPENBLAS_NUM_THREADS = '1'
-#     # NUMEXPR_NUM_THREADS = '1'
-#     # MKL_NUM_THREADS = '1'
-# )
+import os
+os.environ.update(
+    OMP_NUM_THREADS = '1',
+    OPENBLAS_NUM_THREADS = '1'
+    # NUMEXPR_NUM_THREADS = '1'
+    # MKL_NUM_THREADS = '1'
+)
 
 import numpy as np
 import data_generate
@@ -20,19 +20,19 @@ import time
 # tf.config.threading.set_inter_op_parallelism_threads(1)
 
 ###################################### parameters ########################################
-data_select = 3 # can only be 1, 2, 3, 4
-stime_train = 1000 # sample number for training
+data_select = 1 # can only be 1, 2, 3, 4
+stime_train = 100000 # sample number for training
 stime_val = 10000 # sample number for validation
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
-sample_step = 4 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
+sample_step = 50 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
 leaky_ratio = 1 # leaky ratio of ESN
 connectivity_ratio = 1 # connectivity ratio of the ESN internal layer
 activation_fun = 'tanh' # can only be 'tanh' or 'relu'
 washout_end = 50 # the end point of the "washout" region in time series data
-num_units_set = [100, 1000] # original ESN network hidden unit number
-order_set = [10, 100] # reduced order
-num_test = 1 # number of test for each num_units-order combination
+num_units_set = [200, 500, 1000] # original ESN network hidden unit number
+order_set = [10, 20, 40, 80] # reduced order
+num_test = 10 # number of test for each num_units-order combination
 
 mset_esn_org = np.zeros((len(num_units_set), len(order_set)))
 mset_ss_approx = np.zeros((len(num_units_set), len(order_set)))
@@ -209,10 +209,10 @@ for num_units_idx in range(0, len(num_units_set)):
             mseo_miniesn_unstable_tests[test_idx] = np.mean((y_esn_val[:,washout_end:].T - y_out_deim[:,washout_end:].T)**2)
             mseo_miniesn_tests[test_idx] = np.mean((y_esn_val[:,washout_end:].T - y_out_miniesn_stable[:,washout_end:].T)**2)
 
-        print("y_esn_val_type: ", y_esn_val.dtype)
-        print("y_out_sa_type: ", y_out_sa.dtype)
-        print("y_out_deim_type: ", y_out_deim.dtype)
-        print("y_out_miniesn_stable_type: ", y_out_miniesn_stable.dtype)
+        # print("y_esn_val_type: ", y_esn_val.dtype)
+        # print("y_out_sa_type: ", y_out_sa.dtype)
+        # print("y_out_deim_type: ", y_out_deim.dtype)
+        # print("y_out_miniesn_stable_type: ", y_out_miniesn_stable.dtype)
         # print(runtime_esn_org_tests)
         # print(runtime_ss_approx_tests)
         # print(runtime_esn_org_tests)
