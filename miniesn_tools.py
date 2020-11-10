@@ -48,9 +48,12 @@ def esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, inputs):
     x_pre = np.zeros((num_units,1)) # initiate state as zeros if esn model use default zero initial state
     # x_pre = np.zeros((num_units,1)) # initiate state as zeros if esn model use default zero initial state
     y_out = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
+    n_time = inputs[0].shape[0]
+    inputs_reshape = tf.reshape(inputs[0,:,:], [n_time,num_inputs]).numpy().T
     for i in range(inputs[0].shape[0]):
         if activation_fun == 'tanh':
-            g_sample = leaky_ratio*np.tanh(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[num_inputs,1]))
+            # g_sample = leaky_ratio*np.tanh(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[num_inputs,1]))
+            g_sample = leaky_ratio*np.tanh(W@x_pre + W_in@inputs_reshape[:,[i]])
         elif activation_fun == 'relu':
             g_sample = leaky_ratio*tf.nn.relu(W@x_pre + W_in@tf.reshape(inputs[0,i,:],[num_inputs,1]))
         else:
@@ -129,13 +132,28 @@ def esn_deim_stable_sim(E_deim, E_lin, W_deim, W_in_deim, W_out_deim, out_bias, 
     num_outputs = W_out_deim.shape[0]
     num_inputs = W_in_deim.shape[1]
     x_pre_deim = np.zeros((order,1)) # initiate state as zeros if esn model use default zero initial state
+    x_cur_deim = np.zeros((order,1))
     y_out_deim = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
     # x_sample_deim_all = np.zeros((order, inputs.shape[1])) # store all the states, will be used as samples for training
-    for i in range(inputs[0].shape[0]):
+    n_time = inputs[0].shape[0]
+    inputs_reshape = tf.reshape(inputs[0,:,:], [n_time,num_inputs]).numpy().T
+    
+    for i in range(n_time):
         if activation_fun == 'tanh':
-            x_cur_deim = (1-leaky_ratio)*x_pre_deim + leaky_ratio*(E_lin@x_pre_deim + E_deim@np.tanh(W_deim@x_pre_deim + W_in_deim@tf.reshape(inputs[0,i,:],[num_inputs,1])))
+            # x_cur_deim = (1-leaky_ratio)*x_pre_deim + leaky_ratio*(E_lin@x_pre_deim + E_deim@np.tanh(W_deim@x_pre_deim + W_in_deim@tf.reshape(inputs[0,i,:],[num_inputs,1])))
+
+            # x_cur_deim = W_in_deim@inputs_reshape[:,[i]]
+            # x_cur_deim += W_deim@x_pre_deim
+            # x_cur_deim = np.tanh(x_cur_deim)
+            # x_cur_deim = E_deim@x_cur_deim
+            # x_cur_deim += E_lin@x_pre_deim
+            # x_cur_deim = leaky_ratio*x_cur_deim
+            # x_cur_deim += (1-leaky_ratio)*x_pre_deim
+            
+            x_cur_deim = (1-leaky_ratio)*x_pre_deim + leaky_ratio*(E_lin@x_pre_deim + E_deim@np.tanh(W_deim@x_pre_deim + W_in_deim@inputs_reshape[:,[i]]))
+            
         elif activation_fun == 'relu':
-            x_cur_deim = (1-leaky_ratio)*x_pre_deim + leaky_ratio*(E_lin@x_pre_deim + E_deim@tf.nn.relu(W_deim@x_pre_deim + W_in_deim@tf.reshape(inputs[0,i,:],[num_inputs,1])))
+            x_cur_deim = (1-leaky_ratio)*x_pre_deim + leaky_ratio*(E_lin@x_pre_deim + E_deim@tf.nn.relu(W_deim@x_pre_deim + W_in_deim@inputs_reshape[:,[i]]))
         else:
             raise Exception("activation function can only be tanh or relu")
         # x_sample_deim_all[:,[i]] = x_cur_deim # record current state in all state vector as samples for training

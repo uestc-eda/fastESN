@@ -95,10 +95,12 @@ for num_units_idx in range(0, len(num_units_set)):
             # print("u_train: ", u_train)
             # print("y_train: ", y_train)
 
+            # convert data to be compatible with tensorflow
             u_train = u_train.reshape(1,-1,num_inputs)
             y_train = y_train.reshape(1,-1,num_outputs)
             u_val = u_val.reshape(1,-1,num_inputs)
             y_val = y_val.reshape(1,-1,num_outputs)
+            
             # plt.figure()
             # i, = plt.plot(u_train[0,:,out_plt_index], color="blue")
             # t, = plt.plot(y_train[0,:,out_plt_index], color="black", linestyle='dashed')
