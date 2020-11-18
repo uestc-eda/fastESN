@@ -5,7 +5,8 @@ def state_approx(W, W_in, W_out, out_bias, sample_all, sample_step, order):
     # print("x_all=", x_all)
     print("sample_step=", sample_step)
     samples = sample_all[:, 1::sample_step]
-
+    print("sample_num=", samples.shape[1])
+    
     U_right, S_right, V_right = np.linalg.svd(samples, full_matrices=False)
     U_right = U_right[:,0:order]
 
