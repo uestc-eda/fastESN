@@ -103,7 +103,7 @@ def esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, a
     x_pre_deim = np.zeros((order,1)) # initiate state as zeros if esn model use default zero initial state
     y_out_deim = np.zeros((num_outputs, inputs.shape[1])) # output matrix, composed of output vectors over time
     x_cur_deim = np.zeros((order,1))
-    # x_sample_deim_all = np.zeros((order, inputs.shape[1])) # store all the states, will be used as samples for training
+    x_sample_deim_all = np.zeros((order, inputs.shape[1])) # store all the states, will be used as samples for training
     # t_unstable_before = time.process_time_ns() - t_unstable_before_start
     # print("t_unstable_before: ", t_unstable_before)
 
@@ -127,13 +127,13 @@ def esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, a
         #     print("tan(first+second): ",np.tanh(W_deim@x_pre_deim+W_in_deim@tf.reshape(inputs[0,i,:],[num_inputs,1])))
         #     print("Etan(first+second): ",E_deim@np.tanh(W_deim@x_pre_deim+W_in_deim@tf.reshape(inputs[0,i,:],[num_inputs,1])))
         # t_unstable_after_start = time.process_time_ns()
-        # x_sample_deim_all[:,[i]] = x_cur_deim # record current state in all state vector as samples for training
+        x_sample_deim_all[:,[i]] = x_cur_deim # record current state in all state vector as samples for training
         y_out_deim[:,[i]] = W_out_deim @ x_cur_deim + out_bias
         x_pre_deim = x_cur_deim
         # t_unstable_after = time.process_time_ns() - t_unstable_after_start
         # print("t_unstable_after: ", t_unstable_after)
-    # return y_out_deim, x_sample_deim_all
-    return y_out_deim
+    return y_out_deim, x_sample_deim_all
+    # return y_out_deim
 
 def esn_deim_stable_sim(E_deim, E_lin, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, inputs):
     # simulate the reduced ESN model with DEIM

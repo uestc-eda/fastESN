@@ -172,7 +172,7 @@ for num_units_idx in range(0, len(num_units_set)):
             # simulate miniESN with DEIM using state space model, for demonstration ONLY
             # t = time.process_time()
             t = time.perf_counter()
-            y_out_deim = miniesn_tools.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, u_val)
+            y_out_deim, x_sample_deim = miniesn_tools.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, u_val)
             # runtime_miniesn_unstable_ssim_tests[test_idx] = time.process_time() - t
             runtime_miniesn_unstable_ssim_tests[test_idx] = time.perf_counter() - t
             

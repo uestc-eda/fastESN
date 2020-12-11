@@ -8,19 +8,18 @@ import miniesn_tools
 import tensorflow as tf
 
 ###################################### parameters ########################################
-data_select = 3 # can only be 1, 2, 3, 4
-stime_train = 10000 # sample number for training
-stime_val = 500 # sample number for validation
-epochs = 200
-num_units = 100 # original ESN network hidden unit number
+data_select = 1 # can only be 1, 2, 3, 4
+stime_train = 100000 # sample number for training
+stime_val = 150 # sample number for validation
+num_units = 200 # original ESN network hidden unit number
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
-sample_step = 4 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
-order = 20 # reduced order
+sample_step = 50 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
+order = 50 # reduced order
 leaky_ratio = 1 # leaky ratio of ESN
-connectivity_ratio = 0.5 # connectivity ratio of the ESN internal layer
+connectivity_ratio = 1 # connectivity ratio of the ESN internal layer
 activation_fun = 'tanh' # can only be 'tanh' or 'relu'
-washout_end = 50 # the end point of the "washout" region in time series data
+washout_end = 0 # the end point of the "washout" region in time series data
 
 ######################## generate data for training and validation ###############################
 if data_select == 1: # narma 10
@@ -111,7 +110,7 @@ y_out_sa = miniesn_tools.state_approx_sim(W_V_right, W_in, W_out_r, out_bias, V_
 W_deim, W_in_deim, E_deim, W_out_deim = miniesn_gen.miniesn_gen(W, W_in, W_out, V_left, V_right, g_sample_all[:,washout_end:], sample_step, order)
 
 # simulate miniESN with DEIM using state space model, for demonstration ONLY
-y_out_deim = miniesn_tools.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, u_val)
+y_out_deim, x_sample_deim = miniesn_tools.esn_deim_sim(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, u_val)
 
 # # generate miniESN without stablization and assign weights, this network is for demonstration ONLY
 # miniesn_unstable = miniesn_tools.miniesn_unstable_assign(E_deim, W_deim, W_in_deim, W_out_deim, out_bias, leaky_ratio, activation_fun, stime_val)
@@ -142,24 +141,24 @@ print("mse_miniesn_unstable: ", mse_miniesn_unstable)
 print("mse_miniesn: ", mse_miniesn)
 
 ######################### plot the accuracy comparison results ##################################
+plt.rcParams.update({'font.size': 16})
+plt.figure()
+t, = plt.plot(y_val[0,washout_end:,out_plt_index], color="black")
+d, = plt.plot(y_out_deim[out_plt_index, washout_end:], color="magenta", linestyle='dashed')
+plt.xlabel("Timesteps")
+plt.legend([t, d], ["Target", "fastESN unstabilized"])
 
 plt.figure()
-t, = plt.plot(y_val[0,:,out_plt_index], color="black")
-d, = plt.plot(y_out_deim[out_plt_index, :], color="magenta", linestyle='dashed')
+t, = plt.plot(y_val[0,washout_end:,out_plt_index], color="black", linewidth=2)
+o, = plt.plot(y_esn_val[out_plt_index, washout_end:], color="blue", linestyle='dotted', linewidth=2)
+r, = plt.plot(y_out_sa[out_plt_index, washout_end:], color="green", linestyle='dashed', linewidth=2)
+me, = plt.plot(y_out_miniesn_stable[out_plt_index, washout_end:], color="red", linestyle='dashdot', linewidth=2)
 plt.xlabel("Timesteps")
-plt.legend([t, d], ["Target", "miniESN unstabilized"])
+plt.legend([t, o, r, me], ["Target", "ESN", "State approx", "fastESN"])
 
 plt.figure()
-t, = plt.plot(y_val[0,:,out_plt_index], color="black")
-o, = plt.plot(y_esn_val[out_plt_index, :], color="blue", linestyle='dotted')
-r, = plt.plot(y_out_sa[out_plt_index, :], color="green", linestyle='dashed')
-me, = plt.plot(y_out_miniesn_stable[out_plt_index, :], color="red", linestyle='dashdot')
+state, = plt.plot(x_sample_deim[1,:], color="black")
 plt.xlabel("Timesteps")
-plt.legend([t, o, r, me], ["Target", "ESN org", "State approx", "miniESN"])
-
-# plt.figure()
-# state, = plt.plot(x_sample_deim[1,:], color="black")
-# plt.xlabel("Timesteps")
-# plt.legend([state], ["state1"])
+plt.legend([state], ["state1"])
 
 plt.show()
