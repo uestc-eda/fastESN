@@ -6,6 +6,7 @@ import tensorflow.keras as keras
 import miniesn_gen
 import miniesn_tools
 import tensorflow as tf
+from scipy import sparse
 
 ###################################### parameters ########################################
 data_select = 1 # can only be 1, 2, 3, 4
@@ -17,7 +18,7 @@ in_plt_index = 0 # the input to be plotted
 sample_step = 50 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
 order = 50 # reduced order
 leaky_ratio = 1 # leaky ratio of ESN
-connectivity_ratio = 1 # connectivity ratio of the ESN internal layer
+connectivity_ratio = 0.1 # connectivity ratio of the ESN internal layer
 activation_fun = 'tanh' # can only be 'tanh' or 'relu'
 washout_end = 0 # the end point of the "washout" region in time series data
 
@@ -83,6 +84,7 @@ W = W.astype('float64')
 W_in = W_in.astype('float64')
 W_out = W_out.astype('float64')
 out_bias = out_bias.astype('float64')
+W_s = sparse.csr_matrix(W) # sparse W matrix
 
 # simulate the state space ESN model with training data to generate samples
 g_sample_all, g_sample_stable_all, x_sample_all = miniesn_tools.esn_sample_gen(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_train)
@@ -94,7 +96,8 @@ W_out = miniesn_tools.esn_train(x_sample_all[:,washout_end:], y_train[0].T[:,was
 # model = miniesn_tools.esn_assign(model, W_out)
 
 # simulate the trained original ESN
-y_esn_val = miniesn_tools.esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_val)
+# y_esn_val = miniesn_tools.esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_val)
+y_esn_val = miniesn_tools.esn_ss_sim_sp(W_s, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_val)
 # y_esn_val = model(u_val)
 
 ########## construct MiniESN using the trained ESN for simulation #######################

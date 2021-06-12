@@ -14,24 +14,25 @@ import tensorflow.keras as keras
 import miniesn_gen
 import miniesn_tools
 import tensorflow as tf
+from scipy import sparse
 import time
 
 # tf.config.threading.set_intra_op_parallelism_threads(1)
 # tf.config.threading.set_inter_op_parallelism_threads(1)
 
 ###################################### parameters ########################################
-data_select = 1 # can only be 1, 2, 3, 4
+data_select = 4 # can only be 1, 2, 3, 4
 stime_train = 100000 # sample number for training
 stime_val = 10000 # sample number for validation
 out_plt_index = 0 # the output to be plotted
 in_plt_index = 0 # the input to be plotted
 sample_step = 50 # the POD sample step (in time) in MOR, smaller value means finer sampling (more samples)
 leaky_ratio = 1 # leaky ratio of ESN
-connectivity_ratio = 1 # connectivity ratio of the ESN internal layer
+connectivity_ratio = 0.1 # connectivity ratio of the ESN internal layer
 activation_fun = 'tanh' # can only be 'tanh' or 'relu'
 washout_end = 50 # the end point of the "washout" region in time series data
-num_units_set = [200, 500, 1000] # original ESN network hidden unit number
-order_set = [10, 20, 40, 80] # reduced order
+num_units_set = [500, 1000, 2000] # original ESN network hidden unit number
+order_set = [10] # reduced order
 num_test = 10 # number of test for each num_units-order combination
 
 mset_esn_org = np.zeros((len(num_units_set), len(order_set)))
@@ -133,7 +134,7 @@ for num_units_idx in range(0, len(num_units_set)):
             W_in = W_in.astype('float64')
             W_out = W_out.astype('float64')
             out_bias = out_bias.astype('float64')
-            
+            W_s = sparse.csr_matrix(W) # sparse W matrix
             
             # simulate the state space ESN model with training data to generate samples
             g_sample_all, g_sample_stable_all, x_sample_all = miniesn_tools.esn_sample_gen(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_train)
@@ -149,7 +150,8 @@ for num_units_idx in range(0, len(num_units_set)):
             # t = time.process_time()
             t = time.perf_counter()
             # y_esn_val = model(u_val)
-            y_esn_val = miniesn_tools.esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_val)
+            # y_esn_val = miniesn_tools.esn_ss_sim(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_val) # for dense W
+            y_esn_val = miniesn_tools.esn_ss_sim_sp(W_s, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_val) # for sparse W
             # runtime_esn_org_tests[test_idx] = time.process_time() - t
             runtime_esn_org_tests[test_idx] = time.perf_counter() - t
 
