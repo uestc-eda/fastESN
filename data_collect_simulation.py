@@ -21,7 +21,7 @@ import time
 # tf.config.threading.set_inter_op_parallelism_threads(1)
 
 ###################################### parameters ########################################
-data_select = 4 # can only be 1, 2, 3, 4
+data_select = 2 # can only be 1, 2, 3, 4
 stime_train = 100000 # sample number for training
 stime_val = 10000 # sample number for validation
 out_plt_index = 0 # the output to be plotted
@@ -31,9 +31,9 @@ leaky_ratio = 1 # leaky ratio of ESN
 connectivity_ratio = 0.1 # connectivity ratio of the ESN internal layer
 activation_fun = 'tanh' # can only be 'tanh' or 'relu'
 washout_end = 50 # the end point of the "washout" region in time series data
-num_units_set = [500, 1000, 2000] # original ESN network hidden unit number
+num_units_set = [2000] # original ESN network hidden unit number
 order_set = [10] # reduced order
-num_test = 10 # number of test for each num_units-order combination
+num_test = 1 # number of test for each num_units-order combination
 
 mset_esn_org = np.zeros((len(num_units_set), len(order_set)))
 mset_ss_approx = np.zeros((len(num_units_set), len(order_set)))
@@ -135,6 +135,14 @@ for num_units_idx in range(0, len(num_units_set)):
             W_out = W_out.astype('float64')
             out_bias = out_bias.astype('float64')
             W_s = sparse.csr_matrix(W) # sparse W matrix
+            n_par_W_s = W_s.nnz
+            n_par_W_in = W_in.shape[0]*W_in.shape[1]
+            n_par_W_out = W_out.shape[0]*W_out.shape[1]
+            n_par = n_par_W_s + n_par_W_in + n_par_W_out
+            print("n_par_W_s: ", n_par_W_s)
+            print("n_par_W_in: ", n_par_W_in)
+            print("n_par_W_out: ", n_par_W_out)
+            print("n_par: ", n_par)           
             
             # simulate the state space ESN model with training data to generate samples
             g_sample_all, g_sample_stable_all, x_sample_all = miniesn_tools.esn_sample_gen(W, W_in, W_out, out_bias, leaky_ratio, activation_fun, u_train)
