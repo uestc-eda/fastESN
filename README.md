@@ -4,7 +4,9 @@ This repository contains code of fastESN, published in
 
 > H. Wang, X. Long, X.-X. Liu, **"[fastESN: Fast Echo State Network](https://wanghaiuestc.github.io/papers/tnnls_fastesn_author_copy.pdf)."** *IEEE Transactions on Neural Networks and Learning Systems (TNNLS)*, vol. 34, no. 12, December 2023, pp. 10487-10501.
 
-From a trained ESN model, fastESN creates a smaller ESN model of user defined size, at runtime speed (only in mini seconds). As a result, simulation using fastESN can be much faster than the original ESN. 
+From a trained ESN model, fastESN creates a smaller ESN model of user defined size, at runtime speed (only in mini seconds). As a result, simulation using fastESN can be much faster than the original ESN.
+
+See [here](https://wanghaiuestc.github.io) for more opensource softwares from my group. 
 
 ## Installation
 
