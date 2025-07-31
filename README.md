@@ -19,12 +19,12 @@ See [here](https://wanghaiuestc.github.io) for more opensource softwares from my
 Run ```simulation_mode_demo.py``` to view the results. Change settings at the beginning of this script, if you want to see more than the default.
 
 ```sh
-./simulation_mode_demo.py
+python3 ./simulation_mode_demo.py
 ```
 
 
 The statistical results of our paper are reported by running the script ```data_collect_simulation.py```, for different model sizes and sample numbers.
 
 ```sh
-./data_collect_simulation.py
+python3 ./data_collect_simulation.py
 ```
